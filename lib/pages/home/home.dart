@@ -189,7 +189,7 @@ class _HomeState extends State<Home> {
             children: [
               Text(
                 'Profile',
-                style: GoogleFonts.raleway(
+                style: GoogleFonts.albertSans(
                   textStyle: const TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
@@ -224,7 +224,7 @@ class _HomeState extends State<Home> {
               const SizedBox(height: 10),
               Text(
                 FirebaseAuth.instance.currentUser!.email!,
-                style: GoogleFonts.raleway(
+                style: GoogleFonts.albertSans(
                   textStyle: const TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
