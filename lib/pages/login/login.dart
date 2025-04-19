@@ -16,9 +16,6 @@ class Login extends StatelessWidget {
       bottomNavigationBar: _signup(context),
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         toolbarHeight: 50,
       ),
       body: SafeArea(
@@ -39,9 +36,7 @@ class Login extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 60),
               _emailAddress(),
-              const SizedBox(height: 20),
               _password(),
               const SizedBox(height: 50),
               _signin(context),
@@ -54,15 +49,14 @@ class Login extends StatelessWidget {
 
   Widget _emailAddress() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 60),
         Text(
-          'Email Address',
+          'Email',
           style: GoogleFonts.albertSans(
               textStyle: const TextStyle(
                   color: Colors.black,
-                  fontWeight: FontWeight.normal,
                   fontSize: 18
               )
           ),
@@ -71,15 +65,12 @@ class Login extends StatelessWidget {
         TextField(
           controller: _emailController,
           decoration: InputDecoration(
-              filled: true,
               hintStyle: const TextStyle(
                   color: Color(0xff6A6A6A),
-                  fontWeight: FontWeight.normal,
                   fontSize: 14
               ),
               fillColor: const Color(0x86bfbfbf),
               border: OutlineInputBorder(
-                borderSide: BorderSide.none,
               )
           ),
         )
@@ -89,15 +80,14 @@ class Login extends StatelessWidget {
 
   Widget _password() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 20),
         Text(
           'Password',
           style: GoogleFonts.albertSans(
               textStyle: const TextStyle(
                   color: Colors.black,
-                  fontWeight: FontWeight.normal,
                   fontSize: 18
               )
           ),
@@ -107,10 +97,8 @@ class Login extends StatelessWidget {
           obscureText: true,
           controller: _passwordController,
           decoration: InputDecoration(
-              filled: true,
               fillColor: const Color(0x86bfbfbf),
               border: OutlineInputBorder(
-                borderSide: BorderSide.none,
               )
           ),
         )
@@ -156,7 +144,6 @@ class Login extends StatelessWidget {
                     text: "New User? Create Account Here",
                     style: const TextStyle(
                         color: Color(0xff964ddc),
-                        fontWeight: FontWeight.normal,
                         fontSize: 16
                     ),
                     recognizer: TapGestureRecognizer()..onTap = () {
@@ -174,3 +161,6 @@ class Login extends StatelessWidget {
     );
   }
 }
+
+// Link: https://www.youtube.com/watch?v=T96Pue6ePGA&t=352s
+// Description: Google font usage + sign-in/sign-up methods general structure

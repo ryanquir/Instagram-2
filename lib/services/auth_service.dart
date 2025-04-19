@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
-
 import '../pages/home/home.dart';
 import '../pages/login/login.dart';
 
@@ -16,7 +15,6 @@ class AuthService {
   }) async {
 
     try {
-
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
           password: password
@@ -29,25 +27,26 @@ class AuthService {
               builder: (BuildContext context) => const Home()
           )
       );
-
     } on FirebaseAuthException catch(e) {
       String message = '';
       if (e.code == 'weak-password') {
-        message = 'The password provided is too weak.';
+        message = 'Use a stronger password.';
       } else if (e.code == 'email-already-in-use') {
         message = 'An account already exists with that email.';
+      } else {
+        message = 'There was an issue. Make sure your email is properly formatted';
       }
       Fluttertoast.showToast(
         msg: message,
         toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.SNACKBAR,
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.grey,
         textColor: Colors.white,
-        fontSize: 14.0,
+        fontSize: 16.0,
       );
     }
     catch(e){
-
+      print('this is my error $e');
     }
 
   }
@@ -64,36 +63,34 @@ class AuthService {
           email: email,
           password: password
       );
-
       await Future.delayed(const Duration(seconds: 1));
-      print("Sign-in successful. Attempting to navigate to Home.");
       Navigator.pushReplacement(
           context,
           MaterialPageRoute(
               builder: (BuildContext context) => const Home()
           )
       );
-      print("Navigation call made.");
+      print("Navigation call made");
 
     } on FirebaseAuthException catch(e) {
       String message = '';
       if (e.code == 'user-not-found') {
-        message = 'No user found for that email.';
+        message = 'Could not find user for that email.';
       } else if (e.code == 'wrong-password') {
-        message = 'Wrong password provided for that user.';
+        message = 'Wrong password.';
       } else if (e.code == 'invalid-email') {
-        message = 'The email address is badly formatted.';
+        message = 'The email address is invalid.';
       } else {
-        message = 'Sign-in failed: ${e.message}';
+        message = 'Sign-in failure: ${e.message}';
       }
       print("FirebaseAuthException: ${e.code} - ${e.message}");
       Fluttertoast.showToast(
         msg: message,
         toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.SNACKBAR,
-        backgroundColor: Colors.black54,
+        backgroundColor: Colors.grey,
         textColor: Colors.white,
-        fontSize: 14.0,
+        fontSize: 16.0,
       );
     }
     catch(e){
@@ -105,7 +102,6 @@ class AuthService {
   Future<void> signout({
     required BuildContext context
   }) async {
-
     await FirebaseAuth.instance.signOut();
     await Future.delayed(const Duration(seconds: 1));
     Navigator.pushReplacement(
@@ -116,3 +112,7 @@ class AuthService {
     );
   }
 }
+
+// Link: https://www.youtube.com/watch?v=T96Pue6ePGA&t=352s
+// Description: Help with setting up firebase authentication and exception handling
+// on this file & general project structure

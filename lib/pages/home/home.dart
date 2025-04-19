@@ -54,16 +54,16 @@ class _HomeState extends State<Home> {
   Future<void> _uploadPost() async {
     if (_selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please pick an image before uploading."))
+          const SnackBar(content: Text("You must pick an image before uploading."))
       );
       return;
     }
-    if (_captionController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please enter a caption before uploading."))
-      );
-      return;
-    }
+    // if (_captionController.text.trim().isEmpty) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //       const SnackBar(content: Text("You must enter a caption before uploading."))
+    //   );
+    //   return;
+    // }
 
     setState(() => _isUploading = true);
 
@@ -178,14 +178,14 @@ class _HomeState extends State<Home> {
 
   Widget _buildProfileScreen() {
     return SafeArea(
-      child: Center(                                // ← centers its child horizontally
+      child: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,  // ← ensures Column’s children are centered
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
                 'Profile',
@@ -193,9 +193,33 @@ class _HomeState extends State<Home> {
                   textStyle: const TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
-                    fontSize: 20,
+                    fontSize: 36,
                   ),
                 ),
+              ),
+              Row(mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff87c8ff),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      fixedSize: const Size(125, 60),
+                      elevation: 0,
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: () async {
+                      await AuthService().signout(context: context);
+                    },
+                    child: const Text("Log Out"),
+                  ),
+
+                ],
               ),
               const SizedBox(height: 10),
               Text(
@@ -207,26 +231,6 @@ class _HomeState extends State<Home> {
                     fontSize: 20,
                   ),
                 ),
-              ),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xff87c8ff),
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  fixedSize: const Size(200, 60),
-                  elevation: 0,
-                  textStyle: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                onPressed: () async {
-                  await AuthService().signout(context: context);
-                },
-                child: const Text("Sign Out"),
               ),
             ],
           ),

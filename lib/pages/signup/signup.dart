@@ -13,12 +13,10 @@ class Signup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        resizeToAvoidBottomInset: true,
         bottomNavigationBar: _signin(context),
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           automaticallyImplyLeading: false,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
           toolbarHeight: 50,
         ),
         body: SafeArea(
@@ -38,9 +36,7 @@ class Signup extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 60),
                 _emailAddress(),
-                const SizedBox(height: 20),
                 _password(),
                 const SizedBox(height: 50),
                 _signup(context),
@@ -53,15 +49,14 @@ class Signup extends StatelessWidget {
   }
   Widget _emailAddress() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 60),
         Text(
-          'Email Address',
+          'Email',
           style: GoogleFonts.albertSans(
               textStyle: const TextStyle(
                   color: Colors.black,
-                  fontWeight: FontWeight.normal,
                   fontSize: 18
               )
           ),
@@ -70,15 +65,12 @@ class Signup extends StatelessWidget {
         TextField(
           controller: _emailController,
           decoration: InputDecoration(
-              filled: true,
               hintStyle: const TextStyle(
                   color: Color(0xff6A6A6A),
-                  fontWeight: FontWeight.normal,
                   fontSize: 14
               ),
               fillColor: const Color(0x86bfbfbf),
               border: OutlineInputBorder(
-                borderSide: BorderSide.none,
               )
           ),
         )
@@ -88,15 +80,14 @@ class Signup extends StatelessWidget {
 
   Widget _password() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 20),
         Text(
           'Password',
           style: GoogleFonts.albertSans(
               textStyle: const TextStyle(
                   color: Colors.black,
-                  fontWeight: FontWeight.normal,
                   fontSize: 18
               )
           ),
@@ -106,10 +97,8 @@ class Signup extends StatelessWidget {
           controller: _passwordController,
           obscureText: true,
           decoration: InputDecoration(
-              filled: true,
               fillColor: const Color(0x86bfbfbf) ,
               border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
               )
           ),
         )
@@ -154,7 +143,6 @@ class Signup extends StatelessWidget {
                     text: "Already Have An Account? Log In Here",
                     style: const TextStyle(
                         color: Color(0xff964ddc),
-                        fontWeight: FontWeight.normal,
                         fontSize: 16
                     ),
                     recognizer: TapGestureRecognizer()..onTap = () {
@@ -172,3 +160,6 @@ class Signup extends StatelessWidget {
     );
   }
 }
+
+// Link: https://www.youtube.com/watch?v=T96Pue6ePGA&t=352s
+// Description: Google font usage + sign-in/sign-up methods general structure
