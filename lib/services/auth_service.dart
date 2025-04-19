@@ -34,7 +34,7 @@ class AuthService {
       } else if (e.code == 'email-already-in-use') {
         message = 'An account already exists with that email.';
       } else {
-        message = 'There was an issue. Make sure your email is properly formatted';
+        message = 'Sign-in failure: Make sure your email is properly formatted and you entered your password';
       }
       Fluttertoast.showToast(
         msg: message,
@@ -81,7 +81,7 @@ class AuthService {
       } else if (e.code == 'invalid-email') {
         message = 'The email address is invalid.';
       } else {
-        message = 'Sign-in failure: ${e.message}';
+        message = 'Sign-in failure: Make sure your email is properly formatted and you entered your password';
       }
       print("FirebaseAuthException: ${e.code} - ${e.message}");
       Fluttertoast.showToast(
