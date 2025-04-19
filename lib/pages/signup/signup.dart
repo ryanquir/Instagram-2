@@ -13,10 +13,10 @@ class Signup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: Colors.white,
         resizeToAvoidBottomInset: true,
         bottomNavigationBar: _signin(context),
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           backgroundColor: Colors.transparent,
           elevation: 0,
           toolbarHeight: 50,
@@ -28,8 +28,8 @@ class Signup extends StatelessWidget {
               children: [
                 Center(
                   child: Text(
-                    'Register Account',
-                    style: GoogleFonts.raleway(
+                    'Create Account',
+                    style: GoogleFonts.albertSans(
                         textStyle: const TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
@@ -38,11 +38,11 @@ class Signup extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 80,),
+                const SizedBox(height: 60),
                 _emailAddress(),
-                const SizedBox(height: 20,),
+                const SizedBox(height: 20),
                 _password(),
-                const SizedBox(height: 50,),
+                const SizedBox(height: 50),
                 _signup(context),
               ],
             ),
@@ -51,7 +51,6 @@ class Signup extends StatelessWidget {
         )
     );
   }
-
   Widget _emailAddress() {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -59,29 +58,27 @@ class Signup extends StatelessWidget {
       children: [
         Text(
           'Email Address',
-          style: GoogleFonts.raleway(
+          style: GoogleFonts.albertSans(
               textStyle: const TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.normal,
-                  fontSize: 16
+                  fontSize: 18
               )
           ),
         ),
-        const SizedBox(height: 16,),
+        const SizedBox(height: 8),
         TextField(
           controller: _emailController,
           decoration: InputDecoration(
               filled: true,
-              hintText: 'bobsmith@gmail.com',
               hintStyle: const TextStyle(
                   color: Color(0xff6A6A6A),
                   fontWeight: FontWeight.normal,
                   fontSize: 14
               ),
-              fillColor: const Color(0xffF7F7F9) ,
+              fillColor: const Color(0x86bfbfbf),
               border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(14)
+                borderSide: BorderSide.none,
               )
           ),
         )
@@ -96,24 +93,23 @@ class Signup extends StatelessWidget {
       children: [
         Text(
           'Password',
-          style: GoogleFonts.raleway(
+          style: GoogleFonts.albertSans(
               textStyle: const TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.normal,
-                  fontSize: 16
+                  fontSize: 18
               )
           ),
         ),
-        const SizedBox(height: 16,),
+        const SizedBox(height: 8),
         TextField(
           controller: _passwordController,
           obscureText: true,
           decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xffF7F7F9) ,
+              fillColor: const Color(0x86bfbfbf) ,
               border: OutlineInputBorder(
                   borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(14)
               )
           ),
         )
@@ -124,11 +120,16 @@ class Signup extends StatelessWidget {
   Widget _signup(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xff0D6EFD),
+        backgroundColor: const Color(0xff964ddc),
+        foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
-        minimumSize: const Size(double.infinity, 60),
+        textStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+        fixedSize: const Size(200, 60),
         elevation: 0,
       ),
       onPressed: () async {
@@ -138,29 +139,21 @@ class Signup extends StatelessWidget {
             context: context
         );
       },
-      child: const Text("Sign Up"),
+      child: const Text("Create Account"),
     );
   }
 
   Widget _signin(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 40),
       child: RichText(
           textAlign: TextAlign.center,
           text: TextSpan(
               children: [
-                const TextSpan(
-                  text: "Already Have Account? ",
-                  style: TextStyle(
-                      color: Color(0xff6A6A6A),
-                      fontWeight: FontWeight.normal,
-                      fontSize: 16
-                  ),
-                ),
                 TextSpan(
-                    text: "Log In",
+                    text: "Already Have An Account? Log In Here",
                     style: const TextStyle(
-                        color: Color(0xff1A1D1E),
+                        color: Color(0xff964ddc),
                         fontWeight: FontWeight.normal,
                         fontSize: 16
                     ),

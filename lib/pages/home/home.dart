@@ -6,6 +6,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -19,12 +21,20 @@ class _HomeState extends State<Home> {
   final TextEditingController _captionController = TextEditingController();
   File? _selectedImage;
   bool _isUploading = false;
+  late final FirebaseFirestore instagramDb;
+
 
   final List<Widget> _screens = [];
 
   @override
   void initState() {
     super.initState();
+
+    instagramDb = FirebaseFirestore.instanceFor(
+      app: Firebase.app(),
+      databaseId: 'instagram2',
+    );
+
     _screens.addAll([
       _buildFeedScreen(),
       _buildUploadPostScreen(),
@@ -42,12 +52,25 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> _uploadPost() async {
-    if (_selectedImage == null || _captionController.text.isEmpty) return;
+    if (_selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please pick an image before uploading."))
+      );
+      return;
+    }
+    if (_captionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enter a caption before uploading."))
+      );
+      return;
+    }
 
     setState(() => _isUploading = true);
 
     try {
       final user = FirebaseAuth.instance.currentUser!;
+      final email = user.email!;
+
       final ref = FirebaseStorage.instance
           .ref()
           .child('posts/${DateTime.now().millisecondsSinceEpoch}.jpg');
@@ -55,34 +78,35 @@ class _HomeState extends State<Home> {
       await ref.putFile(_selectedImage!);
       final url = await ref.getDownloadURL();
 
-      await FirebaseFirestore.instance.collection('posts').add({
+      await instagramDb.collection('posts').add({
         'imageUrl': url,
         'caption': _captionController.text.trim(),
         'timestamp': FieldValue.serverTimestamp(),
         'userId': user.uid,
+        'userEmail': email,
       });
 
+      // clear and go back to feed
       setState(() {
         _selectedImage = null;
         _captionController.clear();
-        _selectedIndex = 0; // Return to feed after posting
+        _selectedIndex = 0;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Post uploaded!")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Post uploaded!")));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed: $e")),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Failed: $e")));
     } finally {
       setState(() => _isUploading = false);
     }
   }
 
+
   Widget _buildFeedScreen() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
+      stream: instagramDb
           .collection('posts')
           .orderBy('timestamp', descending: true)
           .snapshots(),
@@ -94,6 +118,7 @@ class _HomeState extends State<Home> {
 
         final posts = snapshot.data!.docs;
 
+
         return ListView.builder(
           itemCount: posts.length,
           itemBuilder: (context, index) {
@@ -102,7 +127,7 @@ class _HomeState extends State<Home> {
               margin: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                children: [Text(post['userEmail']),
                   if (post['imageUrl'] != null)
                     Image.network(post['imageUrl']),
                   Padding(
@@ -153,52 +178,63 @@ class _HomeState extends State<Home> {
 
   Widget _buildProfileScreen() {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Hello👋',
-              style: GoogleFonts.raleway(
-                textStyle: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
+      child: Center(                                // ← centers its child horizontally
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,  // ← ensures Column’s children are centered
+            children: [
+              Text(
+                'Profile',
+                style: GoogleFonts.raleway(
+                  textStyle: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              FirebaseAuth.instance.currentUser!.email!,
-              style: GoogleFonts.raleway(
-                textStyle: const TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
+              const SizedBox(height: 10),
+              Text(
+                FirebaseAuth.instance.currentUser!.email!,
+                style: GoogleFonts.raleway(
+                  textStyle: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff0D6EFD),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+              const SizedBox(height: 30),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xff87c8ff),
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  fixedSize: const Size(200, 60),
+                  elevation: 0,
+                  textStyle: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                minimumSize: const Size(double.infinity, 60),
-                elevation: 0,
+                onPressed: () async {
+                  await AuthService().signout(context: context);
+                },
+                child: const Text("Sign Out"),
               ),
-              onPressed: () async {
-                await AuthService().signout(context: context);
-              },
-              child: const Text("Sign Out"),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

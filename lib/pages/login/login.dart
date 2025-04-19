@@ -13,31 +13,13 @@ class Login extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      resizeToAvoidBottomInset: true,
       bottomNavigationBar: _signup(context),
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        toolbarHeight: 100,
-        leading: GestureDetector(
-          onTap: () {
-            Navigator.pop(context);
-          },
-          child: Container(
-            margin: const EdgeInsets.only(left: 10),
-            decoration: const BoxDecoration(
-                color: Color(0xffF7F7F9),
-                shape: BoxShape.circle
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.black,
-              ),
-            ),
-          ),
-        ),
+        toolbarHeight: 50,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -47,8 +29,8 @@ class Login extends StatelessWidget {
             children: [
               Center(
                 child: Text(
-                  'Hello Again',
-                  style: GoogleFonts.raleway(
+                  'Login',
+                  style: GoogleFonts.albertSans(
                       textStyle: const TextStyle(
                           color: Colors.black,
                           fontWeight: FontWeight.bold,
@@ -57,11 +39,11 @@ class Login extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 80,),
+              const SizedBox(height: 60),
               _emailAddress(),
-              const SizedBox(height: 20,),
+              const SizedBox(height: 20),
               _password(),
-              const SizedBox(height: 50,),
+              const SizedBox(height: 50),
               _signin(context),
             ],
           ),
@@ -77,29 +59,27 @@ class Login extends StatelessWidget {
       children: [
         Text(
           'Email Address',
-          style: GoogleFonts.raleway(
+          style: GoogleFonts.albertSans(
               textStyle: const TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.normal,
-                  fontSize: 16
+                  fontSize: 18
               )
           ),
         ),
-        const SizedBox(height: 16,),
+        const SizedBox(height: 8),
         TextField(
           controller: _emailController,
           decoration: InputDecoration(
               filled: true,
-              hintText: 'bobsmith@gmail.com',
               hintStyle: const TextStyle(
                   color: Color(0xff6A6A6A),
                   fontWeight: FontWeight.normal,
                   fontSize: 14
               ),
-              fillColor: const Color(0xffF7F7F9) ,
+              fillColor: const Color(0x86bfbfbf),
               border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(14)
+                borderSide: BorderSide.none,
               )
           ),
         )
@@ -114,24 +94,23 @@ class Login extends StatelessWidget {
       children: [
         Text(
           'Password',
-          style: GoogleFonts.raleway(
+          style: GoogleFonts.albertSans(
               textStyle: const TextStyle(
                   color: Colors.black,
                   fontWeight: FontWeight.normal,
-                  fontSize: 16
+                  fontSize: 18
               )
           ),
         ),
-        const SizedBox(height: 16,),
+        const SizedBox(height: 8),
         TextField(
           obscureText: true,
           controller: _passwordController,
           decoration: InputDecoration(
               filled: true,
-              fillColor: const Color(0xffF7F7F9) ,
+              fillColor: const Color(0x86bfbfbf),
               border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(14)
+                borderSide: BorderSide.none,
               )
           ),
         )
@@ -142,12 +121,17 @@ class Login extends StatelessWidget {
   Widget _signin(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xff0D6EFD),
+        backgroundColor: const Color(0xff964ddc),
+        foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
-        minimumSize: const Size(double.infinity, 60),
+        fixedSize: const Size(200, 60),
         elevation: 0,
+        textStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       onPressed: () async {
         await AuthService().signin(
@@ -157,29 +141,21 @@ class Login extends StatelessWidget {
         );
 
       },
-      child: const Text("Sign In"),
+      child: const Text("Log In"),
     );
   }
 
   Widget _signup(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 40),
       child: RichText(
           textAlign: TextAlign.center,
           text: TextSpan(
               children: [
-                const TextSpan(
-                  text: "New User? ",
-                  style: TextStyle(
-                      color: Color(0xff6A6A6A),
-                      fontWeight: FontWeight.normal,
-                      fontSize: 16
-                  ),
-                ),
                 TextSpan(
-                    text: "Create Account",
+                    text: "New User? Create Account Here",
                     style: const TextStyle(
-                        color: Color(0xff1A1D1E),
+                        color: Color(0xff964ddc),
                         fontWeight: FontWeight.normal,
                         fontSize: 16
                     ),
