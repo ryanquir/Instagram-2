@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/intl.dart';
+
 
 
 class Home extends StatefulWidget {
@@ -177,67 +179,128 @@ class _HomeState extends State<Home> {
   }
 
   Widget _buildProfileScreen() {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                'Profile',
-                style: GoogleFonts.albertSans(
-                  textStyle: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 36,
-                  ),
-                ),
-              ),
-              Row(mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff87c8ff),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      fixedSize: const Size(125, 60),
-                      elevation: 0,
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: () async {
-                      await AuthService().signout(context: context);
-                    },
-                    child: const Text("Log Out"),
-                  ),
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Center(child: Text("Not signed in"));
+    }
 
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                FirebaseAuth.instance.currentUser!.email!,
-                style: GoogleFonts.albertSans(
-                  textStyle: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ——— ORIGINAL HEADER ———
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  'Profile',
+                  style: GoogleFonts.albertSans(
+                    textStyle: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 36,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xff964ddc),
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        fixedSize: const Size(125, 60),
+                        elevation: 0,
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onPressed: () async {
+                        await AuthService().signout(context: context);
+                      },
+                      child: const Text("Log Out"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  user.email ?? "No email",
+                  style: GoogleFonts.albertSans(
+                    textStyle: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+
+          // ——— GRID OF THIS USER’S POSTS ———
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: instagramDb
+                  .collection('posts')
+                  .where('userId', isEqualTo: user.uid)
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error loading posts:\n${snapshot.error}'),
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final posts = snapshot.data!.docs;
+                if (posts.isEmpty) {
+                  return const Center(child: Text("No posts yet"));
+                }
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(8),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
+                  ),
+                  itemCount: posts.length,
+                  itemBuilder: (ctx, i) {
+                    final post = posts[i];
+                    final imageUrl = post['imageUrl'] as String?;
+                    if (imageUrl == null) return const SizedBox();
+
+                    return InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PostDetailScreen(post: post),
+                          ),
+                        );
+                      },
+                      child: Image.network(imageUrl, fit: BoxFit.cover),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
+
+
 
 
   @override
@@ -252,6 +315,72 @@ class _HomeState extends State<Home> {
           BottomNavigationBarItem(icon: Icon(Icons.add), label: "Post"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
+      ),
+    );
+  }
+}
+
+class PostDetailScreen extends StatelessWidget {
+  final QueryDocumentSnapshot post;
+  const PostDetailScreen({Key? key, required this.post}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final data = post.data()! as Map<String, dynamic>;
+
+    final imageUrl   = data['imageUrl']   as String?;
+    final caption    = (data['caption']    as String?)?.trim() ?? '';
+    final email      = (data['userEmail']  as String?) ?? 'Unknown';
+    final timestampF = data['timestamp']   as Timestamp?;
+    final dateText   = timestampF != null
+    // e.g. “Apr 24, 2025 1:45 PM”
+        ? DateFormat.yMMMd().add_jm().format(timestampF.toDate())
+        : '';
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Post Detail')),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (imageUrl != null)
+              Image.network(imageUrl, fit: BoxFit.cover),
+
+            const SizedBox(height: 16),
+
+            // — Caption
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                caption.isNotEmpty ? caption : 'No caption',
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // — Poster email
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'by $email',
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ),
+
+            // — Timestamp
+            if (dateText.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  dateText,
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

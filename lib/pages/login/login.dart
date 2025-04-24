@@ -17,6 +17,7 @@ class Login extends StatelessWidget {
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         toolbarHeight: 50,
+        automaticallyImplyLeading: false,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
