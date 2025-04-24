@@ -6,10 +6,9 @@ import 'pages/signup/signup.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-    final apps = Firebase.apps;
-    if (apps.isEmpty) {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    }
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
 
 

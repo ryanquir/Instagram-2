@@ -8,8 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/intl.dart';
-
-
+import 'package:final_project/pages/comments/comments.dart';
+import 'package:final_project/pages/profile/profile.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -121,12 +121,12 @@ class _HomeState extends State<Home> {
       await ref.putFile(_selectedImage!);
       final url = await ref.getDownloadURL();
 
-      await instagramDb.collection('posts').add({
+      await FirebaseFirestore.instance.collection('posts').add({
         'imageUrl': url,
         'caption': _captionController.text.trim(),
         'timestamp': FieldValue.serverTimestamp(),
         'userId': user.uid,
-        'userEmail': email,
+        'likes': [],
       });
 
       // clear and go back to feed
@@ -149,7 +149,7 @@ class _HomeState extends State<Home> {
 
   Widget _buildFeedScreen() {
     return StreamBuilder<QuerySnapshot>(
-      stream: instagramDb
+      stream: FirebaseFirestore.instance
           .collection('posts')
           .orderBy('timestamp', descending: true)
           .snapshots(),
@@ -166,11 +166,63 @@ class _HomeState extends State<Home> {
           itemCount: posts.length,
           itemBuilder: (context, index) {
             final post = posts[index];
+            final currentUser = FirebaseAuth.instance.currentUser!;
+            final postData = post.data() as Map<String, dynamic>;
+            final likes = postData['likes'] ?? [];
+            final isLiked = likes.contains(currentUser.uid);
             return Card(
               margin: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [Text(post['userEmail']),
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => Profile(userId: post['userId']),
+                        ),
+                      );
+                    },
+                    child: FutureBuilder<DocumentSnapshot>(
+                      future: FirebaseFirestore.instance.collection('users').doc(post['userId']).get(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) return const SizedBox.shrink();
+                        final user = snapshot.data!.data() as Map<String, dynamic>;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Text(user['email'],
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => Profile(userId: post['userId']),
+                          ),
+                        );
+                      },
+                      child: FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(post['userId'])
+                            .get(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) return const SizedBox.shrink();
+                          final user = snapshot.data!.data() as Map<String, dynamic>;
+                          return Text(user['email'],
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16));
+                        },
+                      ),
+                    ),
+                  ),
                   if (post['imageUrl'] != null)
                     Image.network(post['imageUrl']),
                   Padding(
@@ -179,6 +231,42 @@ class _HomeState extends State<Home> {
                       post['caption'] ?? '',
                       style: const TextStyle(fontSize: 16),
                     ),
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          isLiked ? Icons.favorite : Icons.favorite_border,
+                          color: isLiked ? Colors.red : Colors.grey,
+                        ),
+                        onPressed: () async {
+                          final doc = FirebaseFirestore.instance
+                              .collection('posts')
+                              .doc(post.id);
+                          if (isLiked) {
+                            await doc.update({
+                              'likes': FieldValue.arrayRemove([currentUser.uid])
+                            });
+                          } else {
+                            await doc.update({
+                              'likes': FieldValue.arrayUnion([currentUser.uid])
+                            });
+                          }
+                        },
+                      ),
+                      Text('${likes.length} likes'),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.comment),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => PostComments(postId: post.id),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

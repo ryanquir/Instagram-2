@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../pages/home/home.dart';
 import '../pages/login/login.dart';
 
@@ -15,10 +15,16 @@ class AuthService {
   }) async {
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      UserCredential userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: email,
           password: password
       );
+
+      await FirebaseFirestore.instance.collection('users').doc(userCred.user!.uid).set({
+        'email': email,
+        'bio': '',
+        'profileImage': '',
+      });
 
       await Future.delayed(const Duration(seconds: 1));
       Navigator.pushReplacement(
