@@ -121,11 +121,12 @@ class _HomeState extends State<Home> {
       await ref.putFile(_selectedImage!);
       final url = await ref.getDownloadURL();
 
-      await FirebaseFirestore.instance.collection('posts').add({
+      await instagramDb.collection('posts').add({
         'imageUrl': url,
         'caption': _captionController.text.trim(),
         'timestamp': FieldValue.serverTimestamp(),
         'userId': user.uid,
+        'userEmail': email,          // ← save it here
         'likes': [],
       });
 
@@ -149,89 +150,74 @@ class _HomeState extends State<Home> {
 
   Widget _buildFeedScreen() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
+      stream: instagramDb
           .collection('posts')
           .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return const Center(child: Text("Error loading feed"));
+        if (snapshot.hasError) {
+          return const Center(child: Text("Error loading feed"));
+        }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         final posts = snapshot.data!.docs;
 
-
         return ListView.builder(
           itemCount: posts.length,
           itemBuilder: (context, index) {
-            final post = posts[index];
-            final currentUser = FirebaseAuth.instance.currentUser!;
-            final postData = post.data() as Map<String, dynamic>;
-            final likes = postData['likes'] ?? [];
-            final isLiked = likes.contains(currentUser.uid);
+            final post    = posts[index];
+            final data    = post.data() as Map<String, dynamic>;
+            final email   = (data['userEmail'] as String?) ?? 'Unknown user';
+            final imageUrl= data['imageUrl'] as String?;
+            final caption = data['caption'] as String? ?? '';
+            final likes   = List<String>.from(data['likes'] ?? []);
+            final current = FirebaseAuth.instance.currentUser!;
+            final isLiked = likes.contains(current.uid);
+
             return Card(
               margin: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  GestureDetector(
+                  // Clickable poster email
+                  InkWell(
                     onTap: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => Profile(userId: post['userId']),
+                          builder: (_) => Profile(userId: data['userId']),
                         ),
                       );
                     },
-                    child: FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance.collection('users').doc(post['userId']).get(),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) return const SizedBox.shrink();
-                        final user = snapshot.data!.data() as Map<String, dynamic>;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Text(user['email'],
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        );
-                      },
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => Profile(userId: post['userId']),
-                          ),
-                        );
-                      },
-                      child: FutureBuilder<DocumentSnapshot>(
-                        future: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(post['userId'])
-                            .get(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) return const SizedBox.shrink();
-                          final user = snapshot.data!.data() as Map<String, dynamic>;
-                          return Text(user['email'],
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16));
-                        },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      child: Text(
+                        email,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          decoration: TextDecoration.underline, // optional: indicate link
+                        ),
                       ),
                     ),
                   ),
-                  if (post['imageUrl'] != null)
-                    Image.network(post['imageUrl']),
+
+                  // Post image
+                  if (imageUrl != null)
+                    Image.network(imageUrl),
+
+                  // Caption
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      post['caption'] ?? '',
+                      caption,
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),
+
+                  // Like + comment row
                   Row(
                     children: [
                       IconButton(
@@ -240,33 +226,31 @@ class _HomeState extends State<Home> {
                           color: isLiked ? Colors.red : Colors.grey,
                         ),
                         onPressed: () async {
-                          final doc = FirebaseFirestore.instance
-                              .collection('posts')
-                              .doc(post.id);
+                          final docRef = instagramDb.collection('posts').doc(post.id);
                           if (isLiked) {
-                            await doc.update({
-                              'likes': FieldValue.arrayRemove([currentUser.uid])
+                            await docRef.update({
+                              'likes': FieldValue.arrayRemove([current.uid])
                             });
                           } else {
-                            await doc.update({
-                              'likes': FieldValue.arrayUnion([currentUser.uid])
+                            await docRef.update({
+                              'likes': FieldValue.arrayUnion([current.uid])
                             });
                           }
                         },
                       ),
                       Text('${likes.length} likes'),
+                      IconButton(
+                        icon: const Icon(Icons.comment),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PostComments(postId: post.id),
+                            ),
+                          );
+                        },
+                      ),
                     ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.comment),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PostComments(postId: post.id),
-                        ),
-                      );
-                    },
                   ),
                 ],
               ),
@@ -276,6 +260,9 @@ class _HomeState extends State<Home> {
       },
     );
   }
+
+
+
 
   Widget _buildUploadPostScreen() {
     return SingleChildScrollView(
@@ -333,38 +320,32 @@ class _HomeState extends State<Home> {
 
                 const SizedBox(height: 12),
 
-                // 🔥 Replace CircleAvatar+spinner logic with this:
                 StreamBuilder<DocumentSnapshot>(
-                  stream: instagramDb
-                      .collection('users')
-                      .doc(user.uid)
-                      .snapshots(),
+                  stream: instagramDb.collection('users').doc(user.uid).snapshots(),
                   builder: (ctx, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
-                      // still loading the doc
                       return const CircleAvatar(
                         radius: 50,
                         child: CircularProgressIndicator(),
                       );
                     }
-
-                    // once not waiting, either we have data or an error
                     final doc = snap.data;
-                    final url = (doc?.data() as Map<String, dynamic>?)
-                    ?['profileImageUrl'] as String?;
-
+                    if (doc == null || !doc.exists || doc.data() == null) {
+                      return const CircleAvatar(
+                        radius: 50,
+                        child: Icon(Icons.person, size: 50),
+                      );
+                    }
+                    final data = doc.data()! as Map<String, dynamic>;
+                    final url = data['profileImageUrl'] as String?;
                     return Stack(
                       alignment: Alignment.bottomRight,
                       children: [
                         CircleAvatar(
                           radius: 50,
-                          backgroundImage:
-                          url != null ? NetworkImage(url) : null,
-                          child: url == null
-                              ? const Icon(Icons.person, size: 50)
-                              : null,
+                          backgroundImage: url != null ? NetworkImage(url) : null,
+                          child: url == null ? const Icon(Icons.person, size: 50) : null,
                         ),
-                        // edit button
                         InkWell(
                           onTap: _pickAndUploadProfileImage,
                           child: CircleAvatar(
@@ -404,7 +385,9 @@ class _HomeState extends State<Home> {
                     ),
                   ],
                 ),
+
                 const SizedBox(height: 10),
+
                 Text(user.email ?? "No email",
                   style: GoogleFonts.albertSans(
                     textStyle: const TextStyle(
@@ -418,7 +401,7 @@ class _HomeState extends State<Home> {
             ),
           ),
 
-          // ——— GRID OF POSTS (unchanged) ———
+          // ——— GRID OF POSTS ———
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: instagramDb
@@ -430,7 +413,7 @@ class _HomeState extends State<Home> {
                 if (snap.hasError) {
                   return Center(child: Text('Error:\n${snap.error}'));
                 }
-                if (!snap.hasData) {
+                if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final posts = snap.data!.docs;
@@ -448,7 +431,15 @@ class _HomeState extends State<Home> {
                     final img = post['imageUrl'] as String?;
                     if (img == null) return const SizedBox();
                     return InkWell(
-                      onTap: () { /* your detail nav */ },
+                      onTap: () {
+                        // Navigate to detail screen, passing the full post doc
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PostDetailScreen(post: post),
+                          ),
+                        );
+                      },
                       child: Image.network(img, fit: BoxFit.cover),
                     );
                   },
@@ -460,6 +451,7 @@ class _HomeState extends State<Home> {
       ),
     );
   }
+
 
 
 
@@ -541,6 +533,144 @@ class PostDetailScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class Profile extends StatelessWidget {
+  final String userId;
+  const Profile({Key? key, required this.userId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final isCurrentUser = currentUser != null && currentUser.uid == userId;
+    final db = FirebaseFirestore.instanceFor(
+      app: Firebase.app(),
+      databaseId: 'instagram2',
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Profile',
+          style: GoogleFonts.albertSans(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        actions: isCurrentUser
+            ? [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await AuthService().signout(context: context);
+            },
+          )
+        ]
+            : null,
+      ),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Profile picture
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: StreamBuilder<DocumentSnapshot>(
+                stream: db.collection('users').doc(userId).snapshots(),
+                builder: (ctx, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const CircleAvatar(
+                      radius: 50,
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+                  final doc = snap.data;
+                  final data = doc?.data() as Map<String, dynamic>?;
+                  final url = data?['profileImageUrl'] as String?;
+                  return CircleAvatar(
+                    radius: 50,
+                    backgroundImage: url != null ? NetworkImage(url) : null,
+                    child: url == null
+                        ? const Icon(Icons.person, size: 50)
+                        : null,
+                  );
+                },
+              ),
+            ),
+
+            // Email
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: FutureBuilder<DocumentSnapshot>(
+                future: db.collection('users').doc(userId).get(),
+                builder: (ctx, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const SizedBox();
+                  }
+                  final doc = snap.data;
+                  final data = doc?.data() as Map<String, dynamic>?;
+                  final email = data?['email'] as String? ?? 'No email';
+                  return Text(
+                    email,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.albertSans(
+                        fontSize: 20, fontWeight: FontWeight.bold),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Posts grid
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: db
+                    .collection('posts')
+                    .where('userId', isEqualTo: userId)
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+                builder: (ctx, snap) {
+                  if (snap.hasError) {
+                    return Center(child: Text('Error: ${snap.error}'));
+                  }
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final posts = snap.data!.docs;
+                  if (posts.isEmpty) {
+                    return const Center(child: Text('No posts yet'));
+                  }
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(8),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 4,
+                      mainAxisSpacing: 4,
+                    ),
+                    itemCount: posts.length,
+                    itemBuilder: (ctx, i) {
+                      final post = posts[i];
+                      final img = post['imageUrl'] as String?;
+                      if (img == null) return const SizedBox();
+                      return InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PostDetailScreen(post: post),
+                            ),
+                          );
+                        },
+                        child: Image.network(img, fit: BoxFit.cover),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

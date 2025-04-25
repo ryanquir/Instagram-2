@@ -19,11 +19,14 @@ class AuthService {
           email: email,
           password: password
       );
-
-      await FirebaseFirestore.instance.collection('users').doc(userCred.user!.uid).set({
+      final instagramDb = FirebaseFirestore.instanceFor(
+        app: Firebase.app(),
+        databaseId: 'instagram2',
+      );
+      await instagramDb.collection('users').doc(userCred.user!.uid).set({
         'email': email,
         'bio': '',
-        'profileImage': '',
+        'profileImageUrl': '',
       });
 
       await Future.delayed(const Duration(seconds: 1));
