@@ -27,6 +27,8 @@ class AuthService {
         'email': email,
         'bio': '',
         'profileImageUrl': '',
+        'following': [],
+        'userId': userCred.user!.uid,
       });
 
       await Future.delayed(const Duration(seconds: 1));

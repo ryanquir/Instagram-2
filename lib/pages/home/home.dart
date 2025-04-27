@@ -10,6 +10,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/intl.dart';
 import 'package:final_project/pages/comments/comments.dart';
 import 'package:final_project/pages/profile/profile.dart';
+import 'package:final_project/pages/search/search_page.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -38,10 +39,11 @@ class _HomeState extends State<Home> {
       app: Firebase.app(),
       databaseId: 'instagram2',
     );
-    _loadProfileImage();              // ← load at startup
+    _loadProfileImage();
 
     _screens.addAll([
       _buildFeedScreen(),
+      const SearchPage(),
       _buildUploadPostScreen(),
       _buildProfileScreen(),
     ]);
@@ -149,111 +151,108 @@ class _HomeState extends State<Home> {
 
 
   Widget _buildFeedScreen() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: instagramDb
-          .collection('posts')
-          .orderBy('timestamp', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return const Center(child: Text("Error loading feed"));
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    final current = FirebaseAuth.instance.currentUser!;
+    final dbUsers = FirebaseFirestore.instanceFor(
+      app: Firebase.app(),
+      databaseId: 'instagram2',
+    );
+    final usersRef = dbUsers.collection('users');
+    final postsRef = dbUsers.collection('posts');
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: usersRef.doc(current.uid).get(),
+      builder: (ctx, meSnap) {
+        if (!meSnap.hasData || meSnap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
+        final meData = meSnap.data!.data()! as Map<String, dynamic>;
+        final following = List<String>.from(meData['following'] ?? []);
+        if (following.isEmpty) {
+          return const Center(child: Text("Follow someone to see their posts!"));
+        }
 
-        final posts = snapshot.data!.docs;
+        return StreamBuilder<QuerySnapshot>(
+          stream: postsRef
+              .where('userId', whereIn: following)
+              .orderBy('timestamp', descending: true)
+              .snapshots(),
+          builder: (ctx, postSnap) {
+            if (postSnap.hasError) {
+              return Center(child: Text("Error: ${postSnap.error}"));
+            }
+            if (!postSnap.hasData || postSnap.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final posts = postSnap.data!.docs;
+            return ListView.builder(
+              itemCount: posts.length,
+              itemBuilder: (context, i) {
+                final doc   = posts[i];
+                final data  = doc.data()! as Map<String, dynamic>;
+                final email = data['userEmail'] as String? ?? '';
+                final img   = data['imageUrl']   as String?;
+                final cap   = data['caption']    as String? ?? '';
+                final likes = List<String>.from(data['likes'] ?? []);
+                final isLiked = likes.contains(current.uid);
 
-        return ListView.builder(
-          itemCount: posts.length,
-          itemBuilder: (context, index) {
-            final post    = posts[index];
-            final data    = post.data() as Map<String, dynamic>;
-            final email   = (data['userEmail'] as String?) ?? 'Unknown user';
-            final imageUrl= data['imageUrl'] as String?;
-            final caption = data['caption'] as String? ?? '';
-            final likes   = List<String>.from(data['likes'] ?? []);
-            final current = FirebaseAuth.instance.currentUser!;
-            final isLiked = likes.contains(current.uid);
-
-            return Card(
-              margin: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Clickable poster email
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => Profile(userId: data['userId']),
-                        ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      child: Text(
-                        email,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          decoration: TextDecoration.underline, // optional: indicate link
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Post image
-                  if (imageUrl != null)
-                    Image.network(imageUrl),
-
-                  // Caption
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      caption,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ),
-
-                  // Like + comment row
-                  Row(
+                return Card(
+                  margin: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      IconButton(
-                        icon: Icon(
-                          isLiked ? Icons.favorite : Icons.favorite_border,
-                          color: isLiked ? Colors.red : Colors.grey,
+                      InkWell(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => Profile(userId: data['userId'] as String),
+                          ),
                         ),
-                        onPressed: () async {
-                          final docRef = instagramDb.collection('posts').doc(post.id);
-                          if (isLiked) {
-                            await docRef.update({
-                              'likes': FieldValue.arrayRemove([current.uid])
-                            });
-                          } else {
-                            await docRef.update({
-                              'likes': FieldValue.arrayUnion([current.uid])
-                            });
-                          }
-                        },
-                      ),
-                      Text('${likes.length} likes'),
-                      IconButton(
-                        icon: const Icon(Icons.comment),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PostComments(postId: post.id),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Text(
+                            email,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16,
+                              decoration: TextDecoration.underline,
                             ),
-                          );
-                        },
+                          ),
+                        ),
+                      ),
+                      if (img != null) Image.network(img),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(cap, style: const TextStyle(fontSize: 16)),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(isLiked ? Icons.favorite : Icons.favorite_border,
+                                color: isLiked ? Colors.red : Colors.grey),
+                            onPressed: () async {
+                              final ref = postsRef.doc(doc.id);
+                              if (isLiked) {
+                                await ref.update({'likes': FieldValue.arrayRemove([current.uid])});
+                              } else {
+                                await ref.update({'likes': FieldValue.arrayUnion([current.uid])});
+                              }
+                            },
+                          ),
+                          Text('${likes.length} likes'),
+                          IconButton(
+                            icon: const Icon(Icons.comment),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PostComments(postId: doc.id),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         );
@@ -432,7 +431,6 @@ class _HomeState extends State<Home> {
                     if (img == null) return const SizedBox();
                     return InkWell(
                       onTap: () {
-                        // Navigate to detail screen, passing the full post doc
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -462,10 +460,13 @@ class _HomeState extends State<Home> {
     return Scaffold(
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
+        selectedItemColor: Colors.deepPurple,
+        unselectedItemColor: Colors.grey,
         currentIndex: _selectedIndex,
         onTap: (i) => setState(() => _selectedIndex = i),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Feed"),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
           BottomNavigationBarItem(icon: Icon(Icons.add), label: "Post"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
@@ -546,85 +547,55 @@ class Profile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    final isCurrentUser = currentUser != null && currentUser.uid == userId;
+    final current = FirebaseAuth.instance.currentUser!;
+    final isMe = current.uid == userId;
     final db = FirebaseFirestore.instanceFor(
       app: Firebase.app(),
       databaseId: 'instagram2',
     );
+    final usersRef = db.collection('users');
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Profile',
-          style: GoogleFonts.albertSans(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        actions: isCurrentUser
-            ? [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await AuthService().signout(context: context);
-            },
-          )
-        ]
+        title: Text('Profile', style: GoogleFonts.albertSans(fontSize: 24, fontWeight: FontWeight.bold)),
+        actions: isMe
+            ? [ IconButton(icon: const Icon(Icons.logout), onPressed: () => AuthService().signout(context: context)) ]
             : null,
       ),
       body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Profile picture
+            // — PROFILE PICTURE & FOLLOW BUTTON —
             Padding(
               padding: const EdgeInsets.all(16),
               child: StreamBuilder<DocumentSnapshot>(
-                stream: db.collection('users').doc(userId).snapshots(),
+                stream: usersRef.doc(userId).snapshots(),
                 builder: (ctx, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const CircleAvatar(
-                      radius: 50,
-                      child: CircularProgressIndicator(),
-                    );
+                  if (!snap.hasData || snap.connectionState == ConnectionState.waiting) {
+                    return const CircleAvatar(radius: 50, child: CircularProgressIndicator());
                   }
-                  final doc = snap.data;
-                  final data = doc?.data() as Map<String, dynamic>?;
-                  final url = data?['profileImageUrl'] as String?;
-                  return CircleAvatar(
-                    radius: 50,
-                    backgroundImage: url != null ? NetworkImage(url) : null,
-                    child: url == null
-                        ? const Icon(Icons.person, size: 50)
-                        : null,
-                  );
-                },
-              ),
-            ),
+                  final data = snap.data!.data()! as Map<String, dynamic>;
+                  final url  = data['profileImageUrl'] as String?;
+                  final email= data['email'] as String? ?? '';
 
-            // Email
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: FutureBuilder<DocumentSnapshot>(
-                future: db.collection('users').doc(userId).get(),
-                builder: (ctx, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const SizedBox();
-                  }
-                  final doc = snap.data;
-                  final data = doc?.data() as Map<String, dynamic>?;
-                  final email = data?['email'] as String? ?? 'No email';
-                  return Text(
-                    email,
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.albertSans(
-                        fontSize: 20, fontWeight: FontWeight.bold),
+                  return Column(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundImage: url != null ? NetworkImage(url) : null,
+                        child: url == null ? const Icon(Icons.person, size: 50) : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(email, style: GoogleFonts.albertSans(fontSize: 20, fontWeight: FontWeight.bold)),
+                      if (!isMe) _buildFollowButton(context, usersRef),
+                    ],
                   );
                 },
               ),
             ),
 
             const SizedBox(height: 16),
-
-            // Posts grid
+            // — POSTS GRID —
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: db
@@ -633,37 +604,24 @@ class Profile extends StatelessWidget {
                     .orderBy('timestamp', descending: true)
                     .snapshots(),
                 builder: (ctx, snap) {
-                  if (snap.hasError) {
-                    return Center(child: Text('Error: ${snap.error}'));
-                  }
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+                  if (!snap.hasData) return const Center(child: CircularProgressIndicator());
                   final posts = snap.data!.docs;
-                  if (posts.isEmpty) {
-                    return const Center(child: Text('No posts yet'));
-                  }
+                  if (posts.isEmpty) return const Center(child: Text('No posts yet'));
                   return GridView.builder(
                     padding: const EdgeInsets.all(8),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 4,
-                      mainAxisSpacing: 4,
+                      crossAxisCount: 3, crossAxisSpacing: 4, mainAxisSpacing: 4,
                     ),
                     itemCount: posts.length,
                     itemBuilder: (ctx, i) {
-                      final post = posts[i];
-                      final img = post['imageUrl'] as String?;
+                      final doc = posts[i];
+                      final img = (doc.data()! as Map<String, dynamic>)['imageUrl'] as String?;
                       if (img == null) return const SizedBox();
                       return InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PostDetailScreen(post: post),
-                            ),
-                          );
-                        },
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => PostDetailScreen(post: doc)),
+                        ),
                         child: Image.network(img, fit: BoxFit.cover),
                       );
                     },
@@ -674,6 +632,31 @@ class Profile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFollowButton(BuildContext ctx, CollectionReference usersRef) {
+    final current = FirebaseAuth.instance.currentUser!;
+    return StreamBuilder<DocumentSnapshot>(
+      stream: usersRef.doc(current.uid).snapshots(),
+      builder: (c, meSnap) {
+        if (!meSnap.hasData) return const SizedBox();
+        final meData = meSnap.data!.data()! as Map<String, dynamic>;
+        final following = List<String>.from(meData['following'] ?? []);
+        final isFollowing = following.contains(userId);
+
+        return ElevatedButton(
+          onPressed: () async {
+            final ref = usersRef.doc(current.uid);
+            if (isFollowing) {
+              await ref.update({'following': FieldValue.arrayRemove([userId])});
+            } else {
+              await ref.update({'following': FieldValue.arrayUnion([userId])});
+            }
+          },
+          child: Text(isFollowing ? 'Unfollow' : 'Follow'),
+        );
+      },
     );
   }
 }
