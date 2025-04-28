@@ -13,7 +13,8 @@ import 'package:final_project/pages/profile/profile.dart';
 import 'package:final_project/pages/search/search_page.dart';
 
 class Home extends StatefulWidget {
-  const Home({super.key});
+  final int initialIndex;
+  const Home({super.key, this.initialIndex = 0});
 
   @override
   State<Home> createState() => _HomeState();
@@ -34,6 +35,7 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex;
 
     instagramDb = FirebaseFirestore.instanceFor(
       app: Firebase.app(),
@@ -362,13 +364,33 @@ class _HomeState extends State<Home> {
                     }
                     final data = doc.data()! as Map<String, dynamic>;
                     final url = data['profileImageUrl'] as String?;
+
+                    if (url == null || url.isEmpty) {
+                      return const CircleAvatar(
+                        radius: 50,
+                        child: Icon(Icons.person, size: 50),
+                      );
+                    }
+
                     return Stack(
                       alignment: Alignment.bottomRight,
                       children: [
+                        // show spinner while the network image is loading
                         CircleAvatar(
                           radius: 50,
-                          backgroundImage: url != null ? NetworkImage(url) : null,
-                          child: url == null ? const Icon(Icons.person, size: 50) : null,
+                          backgroundColor: Colors.grey[200],
+                          child: ClipOval(
+                            child: Image.network(
+                              url,
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                              loadingBuilder: (ctx, child, progress) {
+                                if (progress == null) return child;
+                                return const Center(child: CircularProgressIndicator());
+                              },
+                            ),
+                          ),
                         ),
                         InkWell(
                           onTap: _pickAndUploadProfileImage,
@@ -452,8 +474,9 @@ class _HomeState extends State<Home> {
                   itemCount: posts.length,
                   itemBuilder: (ctx, i) {
                     final post = posts[i];
-                    final img = post['imageUrl'] as String?;
-                    if (img == null) return const SizedBox();
+                    final imgUrl = post['imageUrl'] as String?;
+                    if (imgUrl == null) return const SizedBox();
+
                     return InkWell(
                       onTap: () {
                         Navigator.push(
@@ -463,7 +486,17 @@ class _HomeState extends State<Home> {
                           ),
                         );
                       },
-                      child: Image.network(img, fit: BoxFit.cover),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.network(
+                          imgUrl,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (ctx, child, progress) {
+                            if (progress == null) return child;
+                            return const Center(child: CircularProgressIndicator());
+                          },
+                        ),
+                      ),
                     );
                   },
                 );
@@ -474,6 +507,10 @@ class _HomeState extends State<Home> {
       ),
     );
   }
+
+
+
+
 
 
 
@@ -600,9 +637,17 @@ class Profile extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Profile', style: GoogleFonts.albertSans(fontSize: 24, fontWeight: FontWeight.bold)),
+        title: Text(
+          'Profile',
+          style: GoogleFonts.albertSans(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
         actions: isMe
-            ? [ IconButton(icon: const Icon(Icons.logout), onPressed: () => AuthService().signout(context: context)) ]
+            ? [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => AuthService().signout(context: context),
+          )
+        ]
             : null,
       ),
       body: SafeArea(
@@ -614,22 +659,55 @@ class Profile extends StatelessWidget {
               child: StreamBuilder<DocumentSnapshot>(
                 stream: usersRef.doc(userId).snapshots(),
                 builder: (ctx, snap) {
-                  if (!snap.hasData || snap.connectionState == ConnectionState.waiting) {
-                    return const CircleAvatar(radius: 50, child: CircularProgressIndicator());
+                  // loading state
+                  if (snap.connectionState == ConnectionState.waiting || !snap.hasData) {
+                    return const CircleAvatar(
+                      radius: 50,
+                      child: CircularProgressIndicator(),
+                    );
                   }
                   final data = snap.data!.data()! as Map<String, dynamic>;
-                  final url  = data['profileImageUrl'] as String?;
-                  final email= data['email'] as String? ?? '';
+                  final url = data['profileImageUrl'] as String?;
+                  final email = data['email'] as String? ?? '';
+
+                  Widget avatar;
+                  if (url != null && url.isNotEmpty) {
+                    avatar = ClipOval(
+                      child: Image.network(
+                        url,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (ctx, child, progress) {
+                          if (progress == null) return child;
+                          return const SizedBox(
+                            width: 100,
+                            height: 100,
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        },
+                        errorBuilder: (_, __, ___) => const SizedBox(
+                          width: 100,
+                          height: 100,
+                          child: Icon(Icons.person, size: 50),
+                        ),
+                      ),
+                    );
+                  } else {
+                    avatar = const CircleAvatar(
+                      radius: 50,
+                      child: Icon(Icons.person, size: 50),
+                    );
+                  }
 
                   return Column(
                     children: [
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundImage: url != null ? NetworkImage(url) : null,
-                        child: url == null ? const Icon(Icons.person, size: 50) : null,
-                      ),
+                      avatar,
                       const SizedBox(height: 8),
-                      Text(email, style: GoogleFonts.albertSans(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text(
+                        email,
+                        style: GoogleFonts.albertSans(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
                       if (!isMe) _buildFollowButton(context, usersRef),
                     ],
                   );
@@ -653,7 +731,9 @@ class Profile extends StatelessWidget {
                   return GridView.builder(
                     padding: const EdgeInsets.all(8),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3, crossAxisSpacing: 4, mainAxisSpacing: 4,
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 4,
+                      mainAxisSpacing: 4,
                     ),
                     itemCount: posts.length,
                     itemBuilder: (ctx, i) {
@@ -665,7 +745,15 @@ class Profile extends StatelessWidget {
                           context,
                           MaterialPageRoute(builder: (_) => PostDetailScreen(post: doc)),
                         ),
-                        child: Image.network(img, fit: BoxFit.cover),
+                        child: Image.network(
+                          img,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return const Center(child: CircularProgressIndicator());
+                          },
+                          errorBuilder: (_, __, ___) => const SizedBox(),
+                        ),
                       );
                     },
                   );
