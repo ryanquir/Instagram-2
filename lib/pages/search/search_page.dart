@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:final_project/pages/home/home.dart';
+//import 'package:final_project/pages/profile/profile.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -21,6 +22,15 @@ class _SearchPageState extends State<SearchPage> {
       databaseId: 'instagram2',
     );
 
+    // pick the right stream: either the first 10 users or your filtered query
+    final Stream<QuerySnapshot> userStream = _query.isEmpty
+        ? db.collection('users').limit(10).snapshots()
+        : db
+        .collection('users')
+        .where('email', isGreaterThanOrEqualTo: _query)
+        .where('email', isLessThanOrEqualTo: '$_query\uf8ff')
+        .snapshots();
+
     return Column(
       children: [
         const SizedBox(height: 50),
@@ -36,14 +46,8 @@ class _SearchPageState extends State<SearchPage> {
           ),
         ),
         Expanded(
-          child: _query.isEmpty
-              ? Container()
-              : StreamBuilder<QuerySnapshot>(
-            stream: db
-                .collection('users')
-                .where('email', isGreaterThanOrEqualTo: _query)
-                .where('email', isLessThanOrEqualTo: '$_query\uf8ff')
-                .snapshots(),
+          child: StreamBuilder<QuerySnapshot>(
+            stream: userStream,
             builder: (ctx, snap) {
               if (snap.hasError) {
                 return Center(child: Text('Error: ${snap.error}'));
@@ -65,18 +69,15 @@ class _SearchPageState extends State<SearchPage> {
                   final uid     = data['userId'] as String? ?? userDoc.id;
 
                   return Card(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     elevation: 2,
                     child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       leading: const Icon(Icons.person),
-                      title: Text(email,
-                          style: const TextStyle(fontSize: 16)),
+                      title: Text(email, style: const TextStyle(fontSize: 16)),
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                       onTap: () => Navigator.push(
                         context,

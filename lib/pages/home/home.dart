@@ -87,8 +87,8 @@ class _HomeState extends State<Home> {
     });
   }
 
-  Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await ImagePicker().pickImage(source: source);
     if (pickedFile != null) {
       setState(() {
         _selectedImage = File(pickedFile.path);
@@ -267,23 +267,47 @@ class _HomeState extends State<Home> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          SizedBox(height: 36),
+
+          const SizedBox(height: 12),
+
+
+
           if (_selectedImage != null)
-            Image.file(_selectedImage!, height: 200),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: _pickImage,
-            icon: const Icon(Icons.photo),
-            label: const Text("Pick Image"),
-          ),
-          const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Image.file(_selectedImage!, height: 250),
+            )
+          else SizedBox(height: 250),
           TextField(
             controller: _captionController,
             decoration: const InputDecoration(labelText: "Caption"),
           ),
           const SizedBox(height: 12),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _pickImage(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library),
+                label: const Text("Gallery"),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
+                onPressed: () => _pickImage(ImageSource.camera),
+                icon: const Icon(Icons.camera_alt),
+                label: const Text("Camera"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+
           _isUploading
-              ? const CircularProgressIndicator()
+              ? const Center(child: CircularProgressIndicator())
               : ElevatedButton(
             onPressed: _uploadPost,
             child: const Text("Upload Post"),
@@ -292,6 +316,7 @@ class _HomeState extends State<Home> {
       ),
     );
   }
+
 
   Widget _buildProfileScreen() {
     final user = FirebaseAuth.instance.currentUser;
@@ -457,8 +482,26 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
+    Widget body;
+    switch (_selectedIndex) {
+      case 0:
+        body = _buildFeedScreen();
+        break;
+      case 1:
+        body = const SearchPage();
+        break;
+      case 2:
+        body = _buildUploadPostScreen();
+        break;
+      case 3:
+        body = _buildProfileScreen();
+        break;
+      default:
+        body = Container();
+    }
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: body,
       bottomNavigationBar: BottomNavigationBar(
         selectedItemColor: Colors.deepPurple,
         unselectedItemColor: Colors.grey,
