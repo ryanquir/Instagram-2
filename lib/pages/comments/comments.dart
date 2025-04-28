@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class PostComments extends StatefulWidget {
   final String postId;
   const PostComments({required this.postId, super.key});
+
 
   @override
   State<PostComments> createState() => _PostCommentsState();
@@ -13,10 +15,14 @@ class PostComments extends StatefulWidget {
 class _PostCommentsState extends State<PostComments> {
   final TextEditingController _commentController = TextEditingController();
   final user = FirebaseAuth.instance.currentUser!;
+  final instagramDb = FirebaseFirestore.instanceFor(
+    app: Firebase.app(),
+    databaseId: 'instagram2',
+  );
 
   Future<void> _postComment() async {
     if (_commentController.text.trim().isEmpty) return;
-    await FirebaseFirestore.instance
+    await instagramDb
         .collection('posts')
         .doc(widget.postId)
         .collection('comments')
@@ -36,7 +42,7 @@ class _PostCommentsState extends State<PostComments> {
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
+              stream: instagramDb
                   .collection('posts')
                   .doc(widget.postId)
                   .collection('comments')
@@ -51,7 +57,7 @@ class _PostCommentsState extends State<PostComments> {
                     return ListTile(
                       title: Text(doc['text']),
                       subtitle: FutureBuilder<DocumentSnapshot>(
-                        future: FirebaseFirestore.instance.collection('users').doc(doc['userId']).get(),
+                        future: instagramDb.collection('users').doc(doc['userId']).get(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) return const Text('Loading...');
                           final user = snapshot.data!.data() as Map<String, dynamic>;
