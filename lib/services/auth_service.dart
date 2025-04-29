@@ -7,18 +7,14 @@ import '../pages/home/home.dart';
 import '../pages/login/login.dart';
 
 class AuthService {
-
   Future<void> signup({
     required String email,
     required String password,
-    required BuildContext context
+    required BuildContext context,
   }) async {
-
     try {
-      UserCredential userCred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email,
-          password: password
-      );
+      UserCredential userCred = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
       final instagramDb = FirebaseFirestore.instanceFor(
         app: Firebase.app(),
         databaseId: 'instagram2',
@@ -33,19 +29,18 @@ class AuthService {
 
       await Future.delayed(const Duration(seconds: 1));
       Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (BuildContext context) => const Home()
-          )
+        context,
+        MaterialPageRoute(builder: (BuildContext context) => const Home()),
       );
-    } on FirebaseAuthException catch(e) {
+    } on FirebaseAuthException catch (e) {
       String message = '';
       if (e.code == 'weak-password') {
         message = 'Use a stronger password.';
       } else if (e.code == 'email-already-in-use') {
         message = 'An account already exists with that email.';
       } else {
-        message = 'Sign-in failure: Make sure your email is properly formatted and you entered your password';
+        message =
+            'Sign-in failure: Make sure your email is properly formatted and you entered your password';
       }
       Fluttertoast.showToast(
         msg: message,
@@ -55,35 +50,28 @@ class AuthService {
         textColor: Colors.white,
         fontSize: 16.0,
       );
-    }
-    catch(e){
+    } catch (e) {
       print('this is my error $e');
     }
-
   }
 
   Future<void> signin({
     required String email,
     required String password,
-    required BuildContext context
+    required BuildContext context,
   }) async {
-
     try {
-
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password
+        email: email,
+        password: password,
       );
       await Future.delayed(const Duration(seconds: 1));
       Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (BuildContext context) => const Home()
-          )
+        context,
+        MaterialPageRoute(builder: (BuildContext context) => const Home()),
       );
       print("Navigation call made");
-
-    } on FirebaseAuthException catch(e) {
+    } on FirebaseAuthException catch (e) {
       String message = '';
       if (e.code == 'user-not-found') {
         message = 'Could not find user for that email.';
@@ -92,7 +80,8 @@ class AuthService {
       } else if (e.code == 'invalid-email') {
         message = 'The email address is invalid.';
       } else {
-        message = 'Sign-in failure: Make sure your email is properly formatted and you entered your password';
+        message =
+            'Sign-in failure: Make sure your email is properly formatted and you entered your password';
       }
       print("FirebaseAuthException: ${e.code} - ${e.message}");
       Fluttertoast.showToast(
@@ -103,23 +92,17 @@ class AuthService {
         textColor: Colors.white,
         fontSize: 16.0,
       );
-    }
-    catch(e){
+    } catch (e) {
       print('this is my error $e');
     }
-
   }
 
-  Future<void> signout({
-    required BuildContext context
-  }) async {
+  Future<void> signout({required BuildContext context}) async {
     await FirebaseAuth.instance.signOut();
     await Future.delayed(const Duration(seconds: 1));
     Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (BuildContext context) =>Login()
-        )
+      context,
+      MaterialPageRoute(builder: (BuildContext context) => Login()),
     );
   }
 }

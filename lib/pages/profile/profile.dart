@@ -30,16 +30,20 @@ class Profile extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Profile',
-          style: GoogleFonts.albertSans(fontSize: 24, fontWeight: FontWeight.bold),
+          style: GoogleFonts.albertSans(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        actions: isMe
-            ? [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => AuthService().signout(context: context),
-          )
-        ]
-            : null,
+        actions:
+            isMe
+                ? [
+                  IconButton(
+                    icon: const Icon(Icons.logout),
+                    onPressed: () => AuthService().signout(context: context),
+                  ),
+                ]
+                : null,
       ),
       body: SafeArea(
         child: Column(
@@ -51,7 +55,8 @@ class Profile extends StatelessWidget {
                 stream: usersRef.doc(userId).snapshots(),
                 builder: (ctx, snap) {
                   // loading state
-                  if (snap.connectionState == ConnectionState.waiting || !snap.hasData) {
+                  if (snap.connectionState == ConnectionState.waiting ||
+                      !snap.hasData) {
                     return const CircleAvatar(
                       radius: 50,
                       child: CircularProgressIndicator(),
@@ -77,11 +82,12 @@ class Profile extends StatelessWidget {
                             child: Center(child: CircularProgressIndicator()),
                           );
                         },
-                        errorBuilder: (_, __, ___) => const SizedBox(
-                          width: 100,
-                          height: 100,
-                          child: Icon(Icons.person, size: 50),
-                        ),
+                        errorBuilder:
+                            (_, __, ___) => const SizedBox(
+                              width: 100,
+                              height: 100,
+                              child: Icon(Icons.person, size: 50),
+                            ),
                       ),
                     );
                   } else {
@@ -97,7 +103,10 @@ class Profile extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         email,
-                        style: GoogleFonts.albertSans(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.albertSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       if (!isMe) _buildFollowButton(context, usersRef),
                     ],
@@ -110,38 +119,49 @@ class Profile extends StatelessWidget {
             // — POSTS GRID —
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
-                stream: db
-                    .collection('posts')
-                    .where('userId', isEqualTo: userId)
-                    .orderBy('timestamp', descending: true)
-                    .snapshots(),
+                stream:
+                    db
+                        .collection('posts')
+                        .where('userId', isEqualTo: userId)
+                        .orderBy('timestamp', descending: true)
+                        .snapshots(),
                 builder: (ctx, snap) {
-                  if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+                  if (!snap.hasData)
+                    return const Center(child: CircularProgressIndicator());
                   final posts = snap.data!.docs;
-                  if (posts.isEmpty) return const Center(child: Text('No posts yet'));
+                  if (posts.isEmpty)
+                    return const Center(child: Text('No posts yet'));
                   return GridView.builder(
                     padding: const EdgeInsets.all(8),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 4,
-                      mainAxisSpacing: 4,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 4,
+                          mainAxisSpacing: 4,
+                        ),
                     itemCount: posts.length,
                     itemBuilder: (ctx, i) {
                       final doc = posts[i];
-                      final img = (doc.data()! as Map<String, dynamic>)['imageUrl'] as String?;
+                      final img =
+                          (doc.data()! as Map<String, dynamic>)['imageUrl']
+                              as String?;
                       if (img == null) return const SizedBox();
                       return InkWell(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => PostDetailScreen(post: doc)),
-                        ),
+                        onTap:
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PostDetailScreen(post: doc),
+                              ),
+                            ),
                         child: Image.network(
                           img,
                           fit: BoxFit.cover,
                           loadingBuilder: (context, child, progress) {
                             if (progress == null) return child;
-                            return const Center(child: CircularProgressIndicator());
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
                           },
                           errorBuilder: (_, __, ___) => const SizedBox(),
                         ),
@@ -171,9 +191,13 @@ class Profile extends StatelessWidget {
           onPressed: () async {
             final ref = usersRef.doc(current.uid);
             if (isFollowing) {
-              await ref.update({'following': FieldValue.arrayRemove([userId])});
+              await ref.update({
+                'following': FieldValue.arrayRemove([userId]),
+              });
             } else {
-              await ref.update({'following': FieldValue.arrayUnion([userId])});
+              await ref.update({
+                'following': FieldValue.arrayUnion([userId]),
+              });
             }
           },
           child: Text(isFollowing ? 'Unfollow' : 'Follow'),

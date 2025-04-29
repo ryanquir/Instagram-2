@@ -24,7 +24,9 @@ class _PostCommentsState extends State<PostComments> {
     if (text.isEmpty) return;
     if (text.length > 60) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Comments must be 60 characters or fewer.")),
+        const SnackBar(
+          content: Text("Comments must be 60 characters or fewer."),
+        ),
       );
       return;
     }
@@ -33,10 +35,10 @@ class _PostCommentsState extends State<PostComments> {
         .doc(widget.postId)
         .collection('comments')
         .add({
-      'text': text,
-      'userId': user.uid,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+          'text': text,
+          'userId': user.uid,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
     _commentController.clear();
   }
 
@@ -48,30 +50,38 @@ class _PostCommentsState extends State<PostComments> {
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: instagramDb
-                  .collection('posts')
-                  .doc(widget.postId)
-                  .collection('comments')
-                  .orderBy('timestamp', descending: true)
-                  .snapshots(),
+              stream:
+                  instagramDb
+                      .collection('posts')
+                      .doc(widget.postId)
+                      .collection('comments')
+                      .orderBy('timestamp', descending: true)
+                      .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 return ListView(
-                  children: snapshot.data!.docs.map((doc) {
-                    return ListTile(
-                      title: Text(doc['text']),
-                      subtitle: FutureBuilder<DocumentSnapshot>(
-                        future: instagramDb.collection('users').doc(doc['userId']).get(),
-                        builder: (context, snap2) {
-                          if (!snap2.hasData) return const Text('Loading...');
-                          final userData = snap2.data!.data() as Map<String, dynamic>;
-                          return Text(userData['email']);
-                        },
-                      ),
-                    );
-                  }).toList(),
+                  children:
+                      snapshot.data!.docs.map((doc) {
+                        return ListTile(
+                          title: Text(doc['text']),
+                          subtitle: FutureBuilder<DocumentSnapshot>(
+                            future:
+                                instagramDb
+                                    .collection('users')
+                                    .doc(doc['userId'])
+                                    .get(),
+                            builder: (context, snap2) {
+                              if (!snap2.hasData)
+                                return const Text('Loading...');
+                              final userData =
+                                  snap2.data!.data() as Map<String, dynamic>;
+                              return Text(userData['email']);
+                            },
+                          ),
+                        );
+                      }).toList(),
                 );
               },
             ),
@@ -94,10 +104,10 @@ class _PostCommentsState extends State<PostComments> {
                 IconButton(
                   icon: const Icon(Icons.send),
                   onPressed: _postComment,
-                )
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

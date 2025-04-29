@@ -13,40 +13,37 @@ class Signup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        bottomNavigationBar: _signin(context),
-        resizeToAvoidBottomInset: true,
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          toolbarHeight: 50,
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16,vertical: 16),
-            child: Column(
-              children: [
-                Center(
-                  child: Text(
-                    'Create Account',
-                    style: GoogleFonts.albertSans(
-                        textStyle: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 32
-                        )
+      bottomNavigationBar: _signin(context),
+      resizeToAvoidBottomInset: true,
+      appBar: AppBar(automaticallyImplyLeading: false, toolbarHeight: 50),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Column(
+            children: [
+              Center(
+                child: Text(
+                  'Create Account',
+                  style: GoogleFonts.albertSans(
+                    textStyle: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 32,
                     ),
                   ),
                 ),
-                _emailAddress(),
-                _password(),
-                const SizedBox(height: 50),
-                _signup(context),
-              ],
-            ),
-
+              ),
+              _emailAddress(),
+              _password(),
+              const SizedBox(height: 50),
+              _signup(context),
+            ],
           ),
-        )
+        ),
+      ),
     );
   }
+
   Widget _emailAddress() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,25 +52,18 @@ class Signup extends StatelessWidget {
         Text(
           'Email',
           style: GoogleFonts.albertSans(
-              textStyle: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 18
-              )
+            textStyle: const TextStyle(color: Colors.black, fontSize: 18),
           ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: _emailController,
           decoration: InputDecoration(
-              hintStyle: const TextStyle(
-                  color: Color(0xff6A6A6A),
-                  fontSize: 14
-              ),
-              fillColor: const Color(0x86bfbfbf),
-              border: OutlineInputBorder(
-              )
+            hintStyle: const TextStyle(color: Color(0xff6A6A6A), fontSize: 14),
+            fillColor: const Color(0x86bfbfbf),
+            border: OutlineInputBorder(),
           ),
-        )
+        ),
       ],
     );
   }
@@ -86,10 +76,7 @@ class Signup extends StatelessWidget {
         Text(
           'Password',
           style: GoogleFonts.albertSans(
-              textStyle: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 18
-              )
+            textStyle: const TextStyle(color: Colors.black, fontSize: 18),
           ),
         ),
         const SizedBox(height: 8),
@@ -97,11 +84,10 @@ class Signup extends StatelessWidget {
           controller: _passwordController,
           obscureText: true,
           decoration: InputDecoration(
-              fillColor: const Color(0x86bfbfbf) ,
-              border: OutlineInputBorder(
-              )
+            fillColor: const Color(0x86bfbfbf),
+            border: OutlineInputBorder(),
           ),
-        )
+        ),
       ],
     );
   }
@@ -111,21 +97,16 @@ class Signup extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xff964ddc),
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-        textStyle: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         fixedSize: const Size(200, 60),
         elevation: 0,
       ),
       onPressed: () async {
         await AuthService().signup(
-            email: _emailController.text,
-            password: _passwordController.text,
-            context: context
+          email: _emailController.text,
+          password: _passwordController.text,
+          context: context,
         );
       },
       child: const Text("Create Account"),
@@ -136,26 +117,23 @@ class Signup extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 40),
       child: RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-              children: [
-                TextSpan(
-                    text: "Already Have An Account? Log In Here",
-                    style: const TextStyle(
-                        color: Color(0xff964ddc),
-                        fontSize: 16
-                    ),
-                    recognizer: TapGestureRecognizer()..onTap = () {
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: "Already Have An Account? Log In Here",
+              style: const TextStyle(color: Color(0xff964ddc), fontSize: 16),
+              recognizer:
+                  TapGestureRecognizer()
+                    ..onTap = () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (context) => Login()
-                        ),
+                        MaterialPageRoute(builder: (context) => Login()),
                       );
-                    }
-                ),
-              ]
-          )
+                    },
+            ),
+          ],
+        ),
       ),
     );
   }

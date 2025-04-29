@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:final_project/pages/comments/comments.dart';
 import 'package:final_project/pages/profile/profile.dart';
 import 'package:final_project/pages/search/search_page.dart';
+import 'package:final_project/pages/direct_messages/messages.dart';
 
 class Home extends StatefulWidget {
   final int initialIndex;
@@ -27,10 +28,9 @@ class _HomeState extends State<Home> {
   bool _isUploading = false;
   late final FirebaseFirestore instagramDb;
 
-
   final List<Widget> _screens = [];
-  String?  _profileImageUrl;
-  bool    _isProfileLoading = true;
+  String? _profileImageUrl;
+  bool _isProfileLoading = true;
 
   @override
   void initState() {
@@ -70,22 +70,21 @@ class _HomeState extends State<Home> {
 
     final file = File(picked.path);
     final user = FirebaseAuth.instance.currentUser!;
-    final ref  = FirebaseStorage.instance
-        .ref()
-        .child('profilePics/${user.uid}.jpg');
+    final ref = FirebaseStorage.instance.ref().child(
+      'profilePics/${user.uid}.jpg',
+    );
 
     await ref.putFile(file);
     final url = await ref.getDownloadURL();
 
     // save URL to Firestore
-    await instagramDb
-        .collection('users')
-        .doc(user.uid)
-        .set({'profileImageUrl': url}, SetOptions(merge: true));
+    await instagramDb.collection('users').doc(user.uid).set({
+      'profileImageUrl': url,
+    }, SetOptions(merge: true));
 
     setState(() {
       _profileImageUrl = url;
-      _isUploading    = false;
+      _isUploading = false;
     });
   }
 
@@ -101,7 +100,9 @@ class _HomeState extends State<Home> {
   Future<void> _uploadPost() async {
     if (_selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You must pick an image before uploading."))
+        const SnackBar(
+          content: Text("You must pick an image before uploading."),
+        ),
       );
       return;
     }
@@ -118,9 +119,9 @@ class _HomeState extends State<Home> {
       final user = FirebaseAuth.instance.currentUser!;
       final email = user.email!;
 
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('posts/${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final ref = FirebaseStorage.instance.ref().child(
+        'posts/${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
 
       await ref.putFile(_selectedImage!);
       final url = await ref.getDownloadURL();
@@ -141,16 +142,17 @@ class _HomeState extends State<Home> {
         _selectedIndex = 0;
       });
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Post uploaded!")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Post uploaded!")));
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Failed: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed: $e")));
     } finally {
       setState(() => _isUploading = false);
     }
   }
-
 
   Widget _buildFeedScreen() {
     final current = FirebaseAuth.instance.currentUser!;
@@ -176,37 +178,57 @@ class _HomeState extends State<Home> {
                     ),
                   ),
                 ),
-                // placeholder to balance the layout
-                const SizedBox(width: 125, height: 48),
+                IconButton(
+                  icon: const Icon(
+                    Icons.message,
+                    size: 28,
+                    color: Colors.black,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MessagesPage(),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
-
           Expanded(
             child: FutureBuilder<DocumentSnapshot>(
               future: usersRef.doc(current.uid).get(),
               builder: (ctx, userSnap) {
-                if (!userSnap.hasData || userSnap.connectionState == ConnectionState.waiting) {
+                if (!userSnap.hasData ||
+                    userSnap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 final following = List<String>.from(
-                    (userSnap.data!.data()! as Map<String, dynamic>)['following'] ?? []
+                  (userSnap.data!.data()!
+                          as Map<String, dynamic>)['following'] ??
+                      [],
                 );
                 final userIds = {...following, current.uid}.toList();
 
                 return StreamBuilder<QuerySnapshot>(
-                  stream: postsRef
-                      .where('userId', whereIn: userIds)
-                      .orderBy('timestamp', descending: true)
-                      .snapshots(),
+                  stream:
+                      postsRef
+                          .where('userId', whereIn: userIds)
+                          .orderBy('timestamp', descending: true)
+                          .snapshots(),
                   builder: (ctx, postSnap) {
-                    if (postSnap.hasError) return Center(child: Text('Error: ${postSnap.error}'));
-                    if (!postSnap.hasData || postSnap.connectionState == ConnectionState.waiting) {
+                    if (postSnap.hasError)
+                      return Center(child: Text('Error: ${postSnap.error}'));
+                    if (!postSnap.hasData ||
+                        postSnap.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
                     final posts = postSnap.data!.docs;
                     if (posts.isEmpty) {
-                      return const Center(child: Text("Follow someone to see their posts!"));
+                      return const Center(
+                        child: Text("Follow someone to see their posts!"),
+                      );
                     }
 
                     return RefreshIndicator(
@@ -215,15 +237,18 @@ class _HomeState extends State<Home> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         itemCount: posts.length,
                         itemBuilder: (ctx, i) {
-                          final doc   = posts[i];
-                          final data  = doc.data()! as Map<String, dynamic>;
+                          final doc = posts[i];
+                          final data = doc.data()! as Map<String, dynamic>;
                           final email = data['userEmail'] as String? ?? '';
-                          final img   = data['imageUrl'] as String?;
-                          final cap   = data['caption'] as String? ?? '';
-                          final ts    = data['timestamp'] as Timestamp?;
-                          final dateText = ts != null
-                              ? DateFormat.yMMMd().add_jm().format(ts.toDate())
-                              : '';
+                          final img = data['imageUrl'] as String?;
+                          final cap = data['caption'] as String? ?? '';
+                          final ts = data['timestamp'] as Timestamp?;
+                          final dateText =
+                              ts != null
+                                  ? DateFormat.yMMMd().add_jm().format(
+                                    ts.toDate(),
+                                  )
+                                  : '';
                           final likes = List<String>.from(data['likes'] ?? []);
                           final isLiked = likes.contains(current.uid);
 
@@ -234,14 +259,22 @@ class _HomeState extends State<Home> {
                               children: [
                                 // poster email
                                 InkWell(
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => Profile(userId: data['userId'] as String),
-                                    ),
-                                  ),
+                                  onTap:
+                                      () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => Profile(
+                                                userId:
+                                                    data['userId'] as String,
+                                              ),
+                                        ),
+                                      ),
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     child: Text(
                                       email,
                                       style: const TextStyle(
@@ -256,24 +289,45 @@ class _HomeState extends State<Home> {
                                 // centered image at 80% width
                                 if (img != null)
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 0),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 0,
+                                    ),
                                     child: Center(
                                       child: SizedBox(
-                                        height: MediaQuery.of(context).size.height * 0.35,
-                                        width: MediaQuery.of(context).size.width * 0.93,
+                                        height:
+                                            MediaQuery.of(context).size.height *
+                                            0.35,
+                                        width:
+                                            MediaQuery.of(context).size.width *
+                                            0.93,
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           child: Image.network(
                                             img,
                                             fit: BoxFit.contain,
-                                            loadingBuilder: (ctx, child, progress) {
-                                              if (progress == null) return child;
-                                              return const Center(child: CircularProgressIndicator());
+                                            loadingBuilder: (
+                                              ctx,
+                                              child,
+                                              progress,
+                                            ) {
+                                              if (progress == null)
+                                                return child;
+                                              return const Center(
+                                                child:
+                                                    CircularProgressIndicator(),
+                                              );
                                             },
-                                            errorBuilder: (_, __, ___) => Container(
-                                              color: Colors.grey[200],
-                                              child: const Center(child: Icon(Icons.broken_image)),
-                                            ),
+                                            errorBuilder:
+                                                (_, __, ___) => Container(
+                                                  color: Colors.grey[200],
+                                                  child: const Center(
+                                                    child: Icon(
+                                                      Icons.broken_image,
+                                                    ),
+                                                  ),
+                                                ),
                                           ),
                                         ),
                                       ),
@@ -285,33 +339,58 @@ class _HomeState extends State<Home> {
                                   children: [
                                     IconButton(
                                       icon: Icon(
-                                        isLiked ? Icons.favorite : Icons.favorite_border,
-                                        color: isLiked ? Colors.red : Colors.grey,
+                                        isLiked
+                                            ? Icons.favorite
+                                            : Icons.favorite_border,
+                                        color:
+                                            isLiked ? Colors.red : Colors.grey,
                                       ),
-                                      onPressed: () => postsRef.doc(doc.id).update({
-                                        'likes': isLiked
-                                            ? FieldValue.arrayRemove([current.uid])
-                                            : FieldValue.arrayUnion([current.uid])
-                                      }),
+                                      onPressed:
+                                          () => postsRef.doc(doc.id).update({
+                                            'likes':
+                                                isLiked
+                                                    ? FieldValue.arrayRemove([
+                                                      current.uid,
+                                                    ])
+                                                    : FieldValue.arrayUnion([
+                                                      current.uid,
+                                                    ]),
+                                          }),
                                     ),
                                     Text('${likes.length} likes'),
                                     const SizedBox(width: 16),
                                     FutureBuilder<QuerySnapshot>(
-                                      future: postsRef.doc(doc.id).collection('comments').get(),
+                                      future:
+                                          postsRef
+                                              .doc(doc.id)
+                                              .collection('comments')
+                                              .get(),
                                       builder: (ctx, snapCount) {
-                                        final count = snapCount.hasData ? snapCount.data!.docs.length : 0;
+                                        final count =
+                                            snapCount.hasData
+                                                ? snapCount.data!.docs.length
+                                                : 0;
                                         return InkWell(
-                                          onTap: () => Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => PostComments(postId: doc.id),
-                                            ),
-                                          ),
+                                          onTap:
+                                              () => Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder:
+                                                      (_) => PostComments(
+                                                        postId: doc.id,
+                                                      ),
+                                                ),
+                                              ),
                                           child: Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
                                             child: Row(
                                               children: [
-                                                const Icon(Icons.comment, size: 24),
+                                                const Icon(
+                                                  Icons.comment,
+                                                  size: 24,
+                                                ),
                                                 const SizedBox(width: 4),
                                                 Text('$count'),
                                               ],
@@ -325,17 +404,29 @@ class _HomeState extends State<Home> {
 
                                 // caption
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                  child: Text('$email: $cap', style: const TextStyle(fontSize: 16)),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 4,
+                                  ),
+                                  child: Text(
+                                    '$email: $cap',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
                                 ),
 
                                 // date
                                 if (dateText.isNotEmpty)
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 4,
+                                    ),
                                     child: Text(
                                       dateText,
-                                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
                                     ),
                                   ),
                               ],
@@ -353,10 +444,6 @@ class _HomeState extends State<Home> {
       ),
     );
   }
-
-
-
-
 
   Widget _buildUploadPostScreen() {
     return SafeArea(
@@ -382,27 +469,27 @@ class _HomeState extends State<Home> {
                   ),
                   _isUploading
                       ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                       : ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff964ddc),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xff964ddc),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          fixedSize: const Size(125, 48),
+                          elevation: 0,
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: _uploadPost,
+                        child: const Text("Upload"),
                       ),
-                      fixedSize: const Size(125, 48),
-                      elevation: 0,
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: _uploadPost,
-                    child: const Text("Upload"),
-                  ),
                 ],
               ),
             ),
@@ -439,7 +526,10 @@ class _HomeState extends State<Home> {
                     children: [
                       Icon(Icons.image, size: 48, color: Colors.grey),
                       SizedBox(height: 8),
-                      Text("Image preview", style: TextStyle(color: Colors.grey)),
+                      Text(
+                        "Image preview",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ],
                   ),
                 ),
@@ -447,13 +537,14 @@ class _HomeState extends State<Home> {
             //const SizedBox(height: 12),
             if (_selectedImage == null)
               Text(
-                  textAlign: TextAlign.center,
-                  "Either choose an existing photo or take a new one"
+                textAlign: TextAlign.center,
+                "Either choose an existing photo or take a new one",
               )
             else
               Text(
-                  textAlign: TextAlign.center,
-                  "You may select a new photo or retake it if you would like"),
+                textAlign: TextAlign.center,
+                "You may select a new photo or retake it if you would like",
+              ),
             const SizedBox(height: 12),
 
             // Getting a photo
@@ -484,8 +575,6 @@ class _HomeState extends State<Home> {
                 border: OutlineInputBorder(),
               ),
             ),
-
-
 
             const SizedBox(height: 20),
           ],
@@ -548,7 +637,11 @@ class _HomeState extends State<Home> {
                 // Profile picture
                 Center(
                   child: StreamBuilder<DocumentSnapshot>(
-                    stream: instagramDb.collection('users').doc(user.uid).snapshots(),
+                    stream:
+                        instagramDb
+                            .collection('users')
+                            .doc(user.uid)
+                            .snapshots(),
                     builder: (ctx, snap) {
                       if (snap.connectionState == ConnectionState.waiting) {
                         return const CircleAvatar(
@@ -585,7 +678,9 @@ class _HomeState extends State<Home> {
                                 fit: BoxFit.cover,
                                 loadingBuilder: (ctx, child, progress) {
                                   if (progress == null) return child;
-                                  return const Center(child: CircularProgressIndicator());
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
                                 },
                               ),
                             ),
@@ -595,7 +690,11 @@ class _HomeState extends State<Home> {
                             child: CircleAvatar(
                               radius: 16,
                               backgroundColor: Colors.white,
-                              child: Icon(Icons.edit, size: 16, color: Colors.grey[700]),
+                              child: Icon(
+                                Icons.edit,
+                                size: 16,
+                                color: Colors.grey[700],
+                              ),
                             ),
                           ),
                         ],
@@ -626,11 +725,12 @@ class _HomeState extends State<Home> {
           // ——— GRID OF POSTS ———
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: instagramDb
-                  .collection('posts')
-                  .where('userId', isEqualTo: user.uid)
-                  .orderBy('timestamp', descending: true)
-                  .snapshots(),
+              stream:
+                  instagramDb
+                      .collection('posts')
+                      .where('userId', isEqualTo: user.uid)
+                      .orderBy('timestamp', descending: true)
+                      .snapshots(),
               builder: (ctx, snap) {
                 if (snap.hasError) {
                   return Center(child: Text('Error:\n${snap.error}'));
@@ -645,7 +745,9 @@ class _HomeState extends State<Home> {
                 return GridView.builder(
                   padding: const EdgeInsets.all(8),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3, crossAxisSpacing: 4, mainAxisSpacing: 4,
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
                   ),
                   itemCount: posts.length,
                   itemBuilder: (ctx, i) {
@@ -669,7 +771,9 @@ class _HomeState extends State<Home> {
                           fit: BoxFit.cover,
                           loadingBuilder: (ctx, child, progress) {
                             if (progress == null) return child;
-                            return const Center(child: CircularProgressIndicator());
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
                           },
                         ),
                       ),
@@ -747,9 +851,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   void _toggleLike(List<dynamic> likes) {
     final liked = likes.contains(_currentUid);
     _postRef.update({
-      'likes': liked
-          ? FieldValue.arrayRemove([_currentUid])
-          : FieldValue.arrayUnion([_currentUid]),
+      'likes':
+          liked
+              ? FieldValue.arrayRemove([_currentUid])
+              : FieldValue.arrayUnion([_currentUid]),
     });
   }
 
@@ -766,19 +871,21 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           if (snap.hasError) {
             return Center(child: Text('Error: ${snap.error}'));
           }
-          if (!snap.hasData || snap.connectionState == ConnectionState.waiting) {
+          if (!snap.hasData ||
+              snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final data      = snap.data!.data()! as Map<String, dynamic>;
-          final imageUrl  = data['imageUrl'] as String?;
-          final caption   = (data['caption'] as String?)?.trim() ?? '';
-          final email     = (data['userEmail'] as String?) ?? 'Unknown';
+          final data = snap.data!.data()! as Map<String, dynamic>;
+          final imageUrl = data['imageUrl'] as String?;
+          final caption = (data['caption'] as String?)?.trim() ?? '';
+          final email = (data['userEmail'] as String?) ?? 'Unknown';
           final timestamp = data['timestamp'] as Timestamp?;
-          final dateText  = timestamp != null
-              ? DateFormat.yMMMd().add_jm().format(timestamp.toDate())
-              : '';
-          final likes     = List<String>.from(data['likes'] ?? []);
-          final isLiked   = likes.contains(_currentUid);
+          final dateText =
+              timestamp != null
+                  ? DateFormat.yMMMd().add_jm().format(timestamp.toDate())
+                  : '';
+          final likes = List<String>.from(data['likes'] ?? []);
+          final isLiked = likes.contains(_currentUid);
 
           return SingleChildScrollView(
             child: Column(
@@ -798,12 +905,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             fit: BoxFit.contain,
                             loadingBuilder: (ctx, child, prog) {
                               if (prog == null) return child;
-                              return const Center(child: CircularProgressIndicator());
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
                             },
-                            errorBuilder: (_, __, ___) => Container(
-                              color: Colors.grey[200],
-                              child: const Center(child: Icon(Icons.broken_image)),
-                            ),
+                            errorBuilder:
+                                (_, __, ___) => Container(
+                                  color: Colors.grey[200],
+                                  child: const Center(
+                                    child: Icon(Icons.broken_image),
+                                  ),
+                                ),
                           ),
                         ),
                       ),
@@ -822,21 +934,28 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         ),
                         onPressed: () => _toggleLike(likes),
                       ),
-                      Text('${likes.length} likes',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        '${likes.length} likes',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
 
                       const SizedBox(width: 16),
 
                       FutureBuilder<QuerySnapshot>(
                         future: _postRef.collection('comments').get(),
                         builder: (ctx, snapCount) {
-                          final count = snapCount.hasData ? snapCount.data!.docs.length : 0;
+                          final count =
+                              snapCount.hasData
+                                  ? snapCount.data!.docs.length
+                                  : 0;
                           return InkWell(
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) => PostComments(postId: widget.post.id),
+                                  builder:
+                                      (_) =>
+                                          PostComments(postId: widget.post.id),
                                 ),
                               );
                             },
@@ -858,7 +977,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    caption.isNotEmpty ? '$email: $caption' : '$email: No caption',
+                    caption.isNotEmpty
+                        ? '$email: $caption'
+                        : '$email: No caption',
                     style: const TextStyle(fontSize: 18),
                   ),
                 ),
