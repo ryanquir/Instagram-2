@@ -15,7 +15,8 @@ import 'package:final_project/pages/home/home.dart';
 class Profile extends StatelessWidget {
   final String userId;
   const Profile({Key? key, required this.userId}) : super(key: key);
-
+  //AI Agent: ChatGPT
+  //prompt: *pasted widget* add a circular progress indicator for when the profile pic is loading
   @override
   Widget build(BuildContext context) {
     final current = FirebaseAuth.instance.currentUser!;
