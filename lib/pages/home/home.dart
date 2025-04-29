@@ -180,7 +180,7 @@ class _HomeState extends State<Home> {
                 ),
                 IconButton(
                   icon: const Icon(
-                    Icons.message,
+                    Icons.chat_bubble_outline,
                     size: 28,
                     color: Colors.black,
                   ),
@@ -637,11 +637,7 @@ class _HomeState extends State<Home> {
                 // Profile picture
                 Center(
                   child: StreamBuilder<DocumentSnapshot>(
-                    stream:
-                        instagramDb
-                            .collection('users')
-                            .doc(user.uid)
-                            .snapshots(),
+                    stream: instagramDb.collection('users').doc(user.uid).snapshots(),
                     builder: (ctx, snap) {
                       if (snap.connectionState == ConnectionState.waiting) {
                         return const CircleAvatar(
@@ -649,21 +645,9 @@ class _HomeState extends State<Home> {
                           child: CircularProgressIndicator(),
                         );
                       }
-                      final doc = snap.data;
-                      if (doc == null || !doc.exists || doc.data() == null) {
-                        return const CircleAvatar(
-                          radius: 50,
-                          child: Icon(Icons.person, size: 50),
-                        );
-                      }
-                      final data = doc.data()! as Map<String, dynamic>;
-                      final url = data['profileImageUrl'] as String?;
-                      if (url == null || url.isEmpty) {
-                        return const CircleAvatar(
-                          radius: 50,
-                          child: Icon(Icons.person, size: 50),
-                        );
-                      }
+                      final data = snap.data?.data() as Map<String, dynamic>? ?? {};
+                      final url  = data['profileImageUrl'] as String?;
+
                       return Stack(
                         alignment: Alignment.bottomRight,
                         children: [
@@ -671,18 +655,19 @@ class _HomeState extends State<Home> {
                             radius: 50,
                             backgroundColor: Colors.grey[200],
                             child: ClipOval(
-                              child: Image.network(
+                              child: url != null && url.isNotEmpty
+                                  ? Image.network(
                                 url,
                                 width: 100,
                                 height: 100,
                                 fit: BoxFit.cover,
-                                loadingBuilder: (ctx, child, progress) {
-                                  if (progress == null) return child;
-                                  return const Center(
-                                    child: CircularProgressIndicator(),
-                                  );
+                                loadingBuilder: (ctx, child, prog) {
+                                  if (prog == null) return child;
+                                  return const Center(child: CircularProgressIndicator());
                                 },
-                              ),
+                                errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 50),
+                              )
+                                  : const Icon(Icons.person, size: 50),
                             ),
                           ),
                           InkWell(
@@ -690,11 +675,7 @@ class _HomeState extends State<Home> {
                             child: CircleAvatar(
                               radius: 16,
                               backgroundColor: Colors.white,
-                              child: Icon(
-                                Icons.edit,
-                                size: 16,
-                                color: Colors.grey[700],
-                              ),
+                              child: Icon(Icons.edit, size: 16, color: Colors.grey[700]),
                             ),
                           ),
                         ],
@@ -722,15 +703,14 @@ class _HomeState extends State<Home> {
             ),
           ),
 
-          // ——— GRID OF POSTS ———
+          // grid of posts
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream:
-                  instagramDb
-                      .collection('posts')
-                      .where('userId', isEqualTo: user.uid)
-                      .orderBy('timestamp', descending: true)
-                      .snapshots(),
+              stream: instagramDb
+                  .collection('posts')
+                  .where('userId', isEqualTo: user.uid)
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
               builder: (ctx, snap) {
                 if (snap.hasError) {
                   return Center(child: Text('Error:\n${snap.error}'));
@@ -745,16 +725,13 @@ class _HomeState extends State<Home> {
                 return GridView.builder(
                   padding: const EdgeInsets.all(8),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 4,
-                    mainAxisSpacing: 4,
+                    crossAxisCount: 3, crossAxisSpacing: 4, mainAxisSpacing: 4,
                   ),
                   itemCount: posts.length,
                   itemBuilder: (ctx, i) {
-                    final post = posts[i];
+                    final post  = posts[i];
                     final imgUrl = post['imageUrl'] as String?;
                     if (imgUrl == null) return const SizedBox();
-
                     return InkWell(
                       onTap: () {
                         Navigator.push(
@@ -771,9 +748,7 @@ class _HomeState extends State<Home> {
                           fit: BoxFit.cover,
                           loadingBuilder: (ctx, child, progress) {
                             if (progress == null) return child;
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
+                            return const Center(child: CircularProgressIndicator());
                           },
                         ),
                       ),

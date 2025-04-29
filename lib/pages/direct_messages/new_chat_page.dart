@@ -20,11 +20,10 @@ class NewChatPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Start New Chat')),
       body: StreamBuilder<QuerySnapshot>(
-        stream:
-            FirebaseFirestore.instanceFor(
-              app: Firebase.app(),
-              databaseId: 'instagram2',
-            ).collection('users').snapshots(),
+        stream: FirebaseFirestore.instanceFor(
+          app: Firebase.app(),
+          databaseId: 'instagram2',
+        ).collection('users').snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData ||
               snapshot.connectionState == ConnectionState.waiting) {
@@ -32,28 +31,70 @@ class NewChatPage extends StatelessWidget {
           }
 
           final users = snapshot.data!.docs;
+          if (users.isEmpty) {
+            return const Center(child: Text('No users found'));
+          }
 
           return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
             itemCount: users.length,
-            itemBuilder: (context, index) {
-              final user = users[index];
-              if (user.id == currentUser.uid) return const SizedBox();
-              return ListTile(
-                title: Text(user['email'] ?? 'User'),
-                onTap: () {
-                  final chatRoomId = getChatRoomId(currentUser.uid, user.id);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => ChatPage(
-                            receiverId: user.id,
-                            receiverName: user['email'] ?? 'User',
-                            chatRoomId: chatRoomId,
-                          ),
-                    ),
-                  );
-                },
+            itemBuilder: (ctx, i) {
+              final doc = users[i];
+              if (doc.id == currentUser.uid) return const SizedBox();
+
+              final data = doc.data()! as Map<String, dynamic>;
+              final email = data['email'] as String? ?? 'User';
+              final profileUrl = data['profileImageUrl'] as String? ?? '';
+
+              Widget avatar;
+              if (profileUrl.isNotEmpty) {
+                avatar = ClipOval(
+                  child: Image.network(
+                    profileUrl,
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (c, child, prog) {
+                      if (prog == null) return child;
+                      return const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 40),
+                  ),
+                );
+              } else {
+                avatar = const Icon(Icons.person, size: 40);
+              }
+
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+                child: ListTile(
+                  contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  leading: avatar,
+                  title: Text(email, style: const TextStyle(fontSize: 16)),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    final chatRoomId = getChatRoomId(currentUser.uid, doc.id);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatPage(
+                          receiverId: doc.id,
+                          receiverName: email,
+                          chatRoomId: chatRoomId,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               );
             },
           );
