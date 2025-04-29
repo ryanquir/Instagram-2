@@ -12,7 +12,8 @@ class NewChatPage extends StatelessWidget {
     ids.sort();
     return ids.join('_');
   }
-
+  // AI Agent: ChatGPT
+  // Prompt: make the list of each name a card like it is in the search page *both widgets pasted*
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser!;

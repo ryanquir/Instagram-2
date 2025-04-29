@@ -444,7 +444,8 @@ class _HomeState extends State<Home> {
       ),
     );
   }
-
+  // AI Agent: ChatGPT
+  // prompt: help me figure out how to add a default image block where the photo will be *widget*
   Widget _buildUploadPostScreen() {
     return SafeArea(
       child: SingleChildScrollView(
@@ -582,7 +583,8 @@ class _HomeState extends State<Home> {
       ),
     );
   }
-
+  // AI Agent: ChatGPT
+  // Prompt: make the self profile screen more similar to the other user's profile screen *pasted both widgets*
   Widget _buildProfileScreen() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const Center(child: Text("Not signed in"));
@@ -832,7 +834,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               : FieldValue.arrayUnion([_currentUid]),
     });
   }
-
+  // AI Agent: ChatGPT
+  // Prompt: *pasted widget* help me make  image size dependent on screen size
   @override
   Widget build(BuildContext context) {
     final screenH = MediaQuery.of(context).size.height;
@@ -980,3 +983,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 }
+
+// Link: https://www.youtube.com/watch?v=T96Pue6ePGA&t=352s
+// Description: Profile log out button
+
+
+
+
