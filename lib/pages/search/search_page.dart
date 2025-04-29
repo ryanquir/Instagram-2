@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:final_project/pages/home/home.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-//import 'package:final_project/pages/profile/profile.dart';
+import 'package:final_project/pages/profile/profile.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({Key? key}) : super(key: key);
@@ -32,71 +33,104 @@ class _SearchPageState extends State<SearchPage> {
 
     final meUid = FirebaseAuth.instance.currentUser!.uid;
 
-    return Column(
-      children: [
-        const SizedBox(height: 50),
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: TextField(
-            controller: _searchController,
-            decoration: const InputDecoration(
-              labelText: 'Search by email',
-              border: OutlineInputBorder(),
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // — HEADER —
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Text(
+              'Search',
+              style: GoogleFonts.albertSans(
+                textStyle: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
+              ),
             ),
-            onChanged: (val) => setState(() => _query = val.trim()),
           ),
-        ),
-        Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: userStream,
-            builder: (ctx, snap) {
-              if (snap.hasError) return Center(child: Text('Error: ${snap.error}'));
-              if (snap.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final users = snap.data!.docs;
-              if (users.isEmpty) return const Center(child: Text('No users found'));
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: users.length,
-                itemBuilder: (ctx, i) {
-                  final userDoc = users[i];
-                  final data = userDoc.data()! as Map<String, dynamic>;
-                  final email = data['email'] as String? ?? 'No email';
-                  final uid = (data['userId'] as String?) ?? userDoc.id;
 
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 2,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      leading: const Icon(Icons.person),
-                      title: Text(email, style: const TextStyle(fontSize: 16)),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () {
-                        if (uid == meUid) {
-                          // my own account → switch to Home’s profile tab
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (_) => const Home(initialIndex: 3)),
-                          );
-                        } else {
-                          // someone else → open their standalone Profile page
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => Profile(userId: uid)),
-                          );
-                        }
-                      },
-                    ),
-                  );
-                },
-              );
-            },
+          // — SEARCH INPUT —
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                labelText: 'Search by email',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (val) => setState(() => _query = val.trim()),
+            ),
           ),
-        ),
-      ],
+
+          const SizedBox(height: 12),
+
+          // — RESULTS LIST —
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: userStream,
+              builder: (ctx, snap) {
+                if (snap.hasError) {
+                  return Center(child: Text('Error: ${snap.error}'));
+                }
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final users = snap.data!.docs;
+                if (users.isEmpty) {
+                  return const Center(child: Text('No users found'));
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: users.length,
+                  itemBuilder: (ctx, i) {
+                    final userDoc = users[i];
+                    final data = userDoc.data()! as Map<String, dynamic>;
+                    final email = data['email'] as String? ?? 'No email';
+                    final uid = (data['userId'] as String?) ?? userDoc.id;
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 2,
+                      child: ListTile(
+                        contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: const Icon(Icons.person),
+                        title: Text(email, style: const TextStyle(fontSize: 16)),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () {
+                          if (uid == meUid) {
+                            // my own account → switch to Home’s profile tab
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const Home(initialIndex: 3),
+                              ),
+                            );
+                          } else {
+                            // someone else → open their standalone Profile page
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => Profile(userId: uid),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -182,7 +182,6 @@ class _HomeState extends State<Home> {
             }
             final posts = postSnap.data!.docs;
             if (posts.isEmpty) {
-              // no posts at all (including your own)
               return const Center(child: Text("Follow someone to see their posts!"));
             }
 
@@ -195,8 +194,12 @@ class _HomeState extends State<Home> {
                   final doc   = posts[i];
                   final data  = doc.data()! as Map<String, dynamic>;
                   final email = data['userEmail'] as String? ?? '';
-                  final img   = data['imageUrl']   as String?;
-                  final cap   = data['caption']    as String? ?? '';
+                  final img   = data['imageUrl'] as String?;
+                  final cap   = data['caption'] as String? ?? '';
+                  final ts    = data['timestamp'] as Timestamp?;
+                  final dateText = ts != null
+                      ? DateFormat.yMMMd().add_jm().format(ts.toDate())
+                      : '';
                   final likes = List<String>.from(data['likes'] ?? []);
                   final isLiked = likes.contains(current.uid);
 
@@ -205,7 +208,7 @@ class _HomeState extends State<Home> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // — poster email
+                        // poster email
                         InkWell(
                           onTap: () => Navigator.push(
                             context,
@@ -226,22 +229,32 @@ class _HomeState extends State<Home> {
                           ),
                         ),
 
-                        // — image with loading spinner
+                        // image
                         if (img != null)
-                          Image.network(
-                            img,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (ctx, child, progress) {
-                              if (progress == null) return child;
-                              return const SizedBox(
-                                height: 200,
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            },
-                            errorBuilder: (_, __, ___) => const SizedBox(height: 200),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: SizedBox(
+                              height: 325,
+                              width: double.infinity,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  img,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder: (ctx, child, progress) {
+                                    if (progress == null) return child;
+                                    return const Center(child: CircularProgressIndicator());
+                                  },
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: Colors.grey[200],
+                                    child: const Center(child: Icon(Icons.broken_image)),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
 
-                        // — like / comment row
+                        // like/comment row
                         Row(
                           children: [
                             IconButton(
@@ -275,11 +288,21 @@ class _HomeState extends State<Home> {
                           ],
                         ),
 
-                        // — caption
+                        // caption
                         Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(cap, style: const TextStyle(fontSize: 16)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          child: Text('$email: $cap', style: const TextStyle(fontSize: 16)),
                         ),
+
+                        // date
+                        if (dateText.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            child: Text(
+                              dateText,
+                              style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                          ),
                       ],
                     ),
                   );
@@ -295,65 +318,134 @@ class _HomeState extends State<Home> {
 
 
 
-
-
   Widget _buildUploadPostScreen() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(height: 36),
-
-          const SizedBox(height: 12),
-
-
-
-          if (_selectedImage != null)
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // — HEADER —
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Image.file(_selectedImage!, height: 250),
-            )
-          else SizedBox(height: 250),
-          Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child:
-              TextField(
-                controller: _captionController,
-                decoration: const InputDecoration(labelText: "Caption"),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Create Post',
+                    style: GoogleFonts.albertSans(
+                      textStyle: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                      ),
+                    ),
+                  ),
+                  // Upload button or spinner
+                  _isUploading
+                      ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                      : ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff964ddc),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      fixedSize: const Size(125, 48),
+                      elevation: 0,
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    onPressed: _uploadPost,
+                    child: const Text("Upload"),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+// — IMAGE PREVIEW / PLACEHOLDER —
+            if (_selectedImage != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: SizedBox(
+                  height: 250,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      _selectedImage!,
+                      fit: BoxFit.contain,  // ← show full image, scale down if too big
+                      width: double.infinity,
+                    ),
+                  ),
+                ),
               )
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => _pickImage(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library),
-                label: const Text("Gallery"),
+            else
+              Container(
+                height: 250,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  border: Border.all(color: Colors.grey[400]!),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.image, size: 48, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Text("Image preview", style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                onPressed: () => _pickImage(ImageSource.camera),
-                icon: const Icon(Icons.camera_alt),
-                label: const Text("Camera"),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
 
 
-          _isUploading
-              ? const Center(child: CircularProgressIndicator())
-              : ElevatedButton(
-            onPressed: _uploadPost,
-            child: const Text("Upload Post"),
-          ),
-        ],
+            const SizedBox(height: 12),
+
+            // — CAPTION FIELD —
+            TextField(
+              controller: _captionController,
+              decoration: const InputDecoration(labelText: "Caption"),
+            ),
+
+            const SizedBox(height: 20),
+
+            // — GALLERY / CAMERA BUTTONS —
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _pickImage(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text("Gallery"),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton.icon(
+                  onPressed: () => _pickImage(ImageSource.camera),
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text("Camera"),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
+
+
+
+
 
 
   Widget _buildProfileScreen() {
@@ -546,17 +638,6 @@ class _HomeState extends State<Home> {
     );
   }
 
-
-
-
-
-
-
-
-
-
-
-
   @override
   Widget build(BuildContext context) {
     Widget body;
@@ -642,12 +723,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           if (!snap.hasData || snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final data = snap.data!.data()! as Map<String, dynamic>;
-          final imageUrl = data['imageUrl'] as String?;
-          final caption  = (data['caption'] as String?)?.trim() ?? '';
-          final email    = (data['userEmail'] as String?) ?? 'Unknown';
+          final data    = snap.data!.data()! as Map<String, dynamic>;
+          final imageUrl= data['imageUrl']   as String?;
+          final caption = (data['caption']   as String?)?.trim() ?? '';
+          final email   = (data['userEmail'] as String?) ?? 'Unknown';
           final timestampF = data['timestamp'] as Timestamp?;
-          final dateText = timestampF != null
+          final dateText   = timestampF != null
               ? DateFormat.yMMMd().add_jm().format(timestampF.toDate())
               : '';
           final likes   = List<String>.from(data['likes'] ?? []);
@@ -670,7 +751,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     },
                   ),
 
-                // — Likes row —
+                // — Likes & Comments row —
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Row(
@@ -682,214 +763,54 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         ),
                         onPressed: () => _toggleLike(likes),
                       ),
-                      Text('${likes.length} likes',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        '${likes.length} likes',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+
+                      const SizedBox(width: 16),
+
+                      IconButton(
+                        icon: const Icon(Icons.comment),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PostComments(postId: widget.post.id),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
+
+                // — Caption, email, timestamp —
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    caption.isNotEmpty ? caption : 'No caption',
+                    caption.isNotEmpty ? '$email: $caption' : '$email: No caption',
                     style: const TextStyle(fontSize: 18),
                   ),
                 ),
-
-                const SizedBox(height: 8),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('by $email', style: const TextStyle(color: Colors.grey)),
-                ),
+                //const SizedBox(height: 8),
 
                 if (dateText.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(dateText,
-                        style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    child: Text(
+                      dateText,
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
                   ),
                 ],
-
                 const SizedBox(height: 12),
-
-
               ],
             ),
           );
         },
       ),
-    );
-  }
-}
-
-class Profile extends StatelessWidget {
-  final String userId;
-  const Profile({Key? key, required this.userId}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final current = FirebaseAuth.instance.currentUser!;
-    final isMe = current.uid == userId;
-    final db = FirebaseFirestore.instanceFor(
-      app: Firebase.app(),
-      databaseId: 'instagram2',
-    );
-    final usersRef = db.collection('users');
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Profile',
-          style: GoogleFonts.albertSans(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        actions: isMe
-            ? [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => AuthService().signout(context: context),
-          )
-        ]
-            : null,
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // — PROFILE PICTURE & FOLLOW BUTTON —
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: StreamBuilder<DocumentSnapshot>(
-                stream: usersRef.doc(userId).snapshots(),
-                builder: (ctx, snap) {
-                  // loading state
-                  if (snap.connectionState == ConnectionState.waiting || !snap.hasData) {
-                    return const CircleAvatar(
-                      radius: 50,
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-                  final data = snap.data!.data()! as Map<String, dynamic>;
-                  final url = data['profileImageUrl'] as String?;
-                  final email = data['email'] as String? ?? '';
-
-                  Widget avatar;
-                  if (url != null && url.isNotEmpty) {
-                    avatar = ClipOval(
-                      child: Image.network(
-                        url,
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (ctx, child, progress) {
-                          if (progress == null) return child;
-                          return const SizedBox(
-                            width: 100,
-                            height: 100,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        },
-                        errorBuilder: (_, __, ___) => const SizedBox(
-                          width: 100,
-                          height: 100,
-                          child: Icon(Icons.person, size: 50),
-                        ),
-                      ),
-                    );
-                  } else {
-                    avatar = const CircleAvatar(
-                      radius: 50,
-                      child: Icon(Icons.person, size: 50),
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      avatar,
-                      const SizedBox(height: 8),
-                      Text(
-                        email,
-                        style: GoogleFonts.albertSans(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                      if (!isMe) _buildFollowButton(context, usersRef),
-                    ],
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 16),
-            // — POSTS GRID —
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: db
-                    .collection('posts')
-                    .where('userId', isEqualTo: userId)
-                    .orderBy('timestamp', descending: true)
-                    .snapshots(),
-                builder: (ctx, snap) {
-                  if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-                  final posts = snap.data!.docs;
-                  if (posts.isEmpty) return const Center(child: Text('No posts yet'));
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(8),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 4,
-                      mainAxisSpacing: 4,
-                    ),
-                    itemCount: posts.length,
-                    itemBuilder: (ctx, i) {
-                      final doc = posts[i];
-                      final img = (doc.data()! as Map<String, dynamic>)['imageUrl'] as String?;
-                      if (img == null) return const SizedBox();
-                      return InkWell(
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => PostDetailScreen(post: doc)),
-                        ),
-                        child: Image.network(
-                          img,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, progress) {
-                            if (progress == null) return child;
-                            return const Center(child: CircularProgressIndicator());
-                          },
-                          errorBuilder: (_, __, ___) => const SizedBox(),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFollowButton(BuildContext ctx, CollectionReference usersRef) {
-    final current = FirebaseAuth.instance.currentUser!;
-    return StreamBuilder<DocumentSnapshot>(
-      stream: usersRef.doc(current.uid).snapshots(),
-      builder: (c, meSnap) {
-        if (!meSnap.hasData) return const SizedBox();
-        final meData = meSnap.data!.data()! as Map<String, dynamic>;
-        final following = List<String>.from(meData['following'] ?? []);
-        final isFollowing = following.contains(userId);
-
-        return ElevatedButton(
-          onPressed: () async {
-            final ref = usersRef.doc(current.uid);
-            if (isFollowing) {
-              await ref.update({'following': FieldValue.arrayRemove([userId])});
-            } else {
-              await ref.update({'following': FieldValue.arrayUnion([userId])});
-            }
-          },
-          child: Text(isFollowing ? 'Unfollow' : 'Follow'),
-        );
-      },
     );
   }
 }
