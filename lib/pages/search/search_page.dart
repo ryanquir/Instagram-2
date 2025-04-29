@@ -37,7 +37,6 @@ class _SearchPageState extends State<SearchPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // — HEADER —
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Text(
@@ -52,7 +51,7 @@ class _SearchPageState extends State<SearchPage> {
             ),
           ),
 
-          // — SEARCH INPUT —
+          // search input
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
@@ -90,6 +89,36 @@ class _SearchPageState extends State<SearchPage> {
                     final data = userDoc.data()! as Map<String, dynamic>;
                     final email = data['email'] as String? ?? 'No email';
                     final uid = (data['userId'] as String?) ?? userDoc.id;
+                    final profileUrl = data['profileImageUrl'] as String? ?? '';
+
+                    Widget avatar;
+                    if (profileUrl.isNotEmpty) {
+                      avatar = ClipOval(
+                        child: Image.network(
+                          profileUrl,
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (ctx, child, progress) {
+                            if (progress == null) return child;
+                            return const SizedBox(
+                              width: 40,
+                              height: 40,
+                              child: Center(
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => const SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Icon(Icons.person),
+                          ),
+                        ),
+                      );
+                    } else {
+                      avatar = const Icon(Icons.person, size: 40);
+                    }
 
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -100,12 +129,11 @@ class _SearchPageState extends State<SearchPage> {
                       child: ListTile(
                         contentPadding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        leading: const Icon(Icons.person),
+                        leading: avatar,
                         title: Text(email, style: const TextStyle(fontSize: 16)),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                         onTap: () {
                           if (uid == meUid) {
-                            // my own account → switch to Home’s profile tab
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
@@ -113,7 +141,6 @@ class _SearchPageState extends State<SearchPage> {
                               ),
                             );
                           } else {
-                            // someone else → open their standalone Profile page
                             Navigator.push(
                               context,
                               MaterialPageRoute(

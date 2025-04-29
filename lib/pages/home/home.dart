@@ -66,7 +66,7 @@ class _HomeState extends State<Home> {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
-    setState(() => _isUploading = true);  // optional: show spinner
+    setState(() => _isUploading = true);
 
     final file = File(picked.path);
     final user = FirebaseAuth.instance.currentUser!;
@@ -130,7 +130,7 @@ class _HomeState extends State<Home> {
         'caption': _captionController.text.trim(),
         'timestamp': FieldValue.serverTimestamp(),
         'userId': user.uid,
-        'userEmail': email,          // ← save it here
+        'userEmail': email,
         'likes': [],
       });
 
@@ -157,163 +157,203 @@ class _HomeState extends State<Home> {
     final usersRef = instagramDb.collection('users');
     final postsRef = instagramDb.collection('posts');
 
-    return FutureBuilder<DocumentSnapshot>(
-      future: usersRef.doc(current.uid).get(),
-      builder: (ctx, userSnap) {
-        if (!userSnap.hasData || userSnap.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final userData = userSnap.data!.data()! as Map<String, dynamic>;
-        final following = List<String>.from(userData['following'] ?? []);
-        // always include current user
-        final userIds = {...following, current.uid}.toList();
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Feed',
+                  style: GoogleFonts.albertSans(
+                    textStyle: const TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                    ),
+                  ),
+                ),
+                // placeholder to balance the layout
+                const SizedBox(width: 125, height: 48),
+              ],
+            ),
+          ),
 
-        return StreamBuilder<QuerySnapshot>(
-          stream: postsRef
-              .where('userId', whereIn: userIds)
-              .orderBy('timestamp', descending: true)
-              .snapshots(),
-          builder: (ctx, postSnap) {
-            if (postSnap.hasError) {
-              return Center(child: Text('Error: ${postSnap.error}'));
-            }
-            if (!postSnap.hasData || postSnap.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final posts = postSnap.data!.docs;
-            if (posts.isEmpty) {
-              return const Center(child: Text("Follow someone to see their posts!"));
-            }
+          Expanded(
+            child: FutureBuilder<DocumentSnapshot>(
+              future: usersRef.doc(current.uid).get(),
+              builder: (ctx, userSnap) {
+                if (!userSnap.hasData || userSnap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final following = List<String>.from(
+                    (userSnap.data!.data()! as Map<String, dynamic>)['following'] ?? []
+                );
+                final userIds = {...following, current.uid}.toList();
 
-            return RefreshIndicator(
-              onRefresh: () async => setState(() {}),
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: posts.length,
-                itemBuilder: (ctx, i) {
-                  final doc   = posts[i];
-                  final data  = doc.data()! as Map<String, dynamic>;
-                  final email = data['userEmail'] as String? ?? '';
-                  final img   = data['imageUrl'] as String?;
-                  final cap   = data['caption'] as String? ?? '';
-                  final ts    = data['timestamp'] as Timestamp?;
-                  final dateText = ts != null
-                      ? DateFormat.yMMMd().add_jm().format(ts.toDate())
-                      : '';
-                  final likes = List<String>.from(data['likes'] ?? []);
-                  final isLiked = likes.contains(current.uid);
+                return StreamBuilder<QuerySnapshot>(
+                  stream: postsRef
+                      .where('userId', whereIn: userIds)
+                      .orderBy('timestamp', descending: true)
+                      .snapshots(),
+                  builder: (ctx, postSnap) {
+                    if (postSnap.hasError) return Center(child: Text('Error: ${postSnap.error}'));
+                    if (!postSnap.hasData || postSnap.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final posts = postSnap.data!.docs;
+                    if (posts.isEmpty) {
+                      return const Center(child: Text("Follow someone to see their posts!"));
+                    }
 
-                  return Card(
-                    margin: const EdgeInsets.all(10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // poster email
-                        InkWell(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => Profile(userId: data['userId'] as String),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            child: Text(
-                              email,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                        ),
+                    return RefreshIndicator(
+                      onRefresh: () async => setState(() {}),
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: posts.length,
+                        itemBuilder: (ctx, i) {
+                          final doc   = posts[i];
+                          final data  = doc.data()! as Map<String, dynamic>;
+                          final email = data['userEmail'] as String? ?? '';
+                          final img   = data['imageUrl'] as String?;
+                          final cap   = data['caption'] as String? ?? '';
+                          final ts    = data['timestamp'] as Timestamp?;
+                          final dateText = ts != null
+                              ? DateFormat.yMMMd().add_jm().format(ts.toDate())
+                              : '';
+                          final likes = List<String>.from(data['likes'] ?? []);
+                          final isLiked = likes.contains(current.uid);
 
-                        // image
-                        if (img != null)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: SizedBox(
-                              height: 325,
-                              width: double.infinity,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  img,
-                                  fit: BoxFit.contain,
-                                  loadingBuilder: (ctx, child, progress) {
-                                    if (progress == null) return child;
-                                    return const Center(child: CircularProgressIndicator());
-                                  },
-                                  errorBuilder: (_, __, ___) => Container(
-                                    color: Colors.grey[200],
-                                    child: const Center(child: Icon(Icons.broken_image)),
+                          return Card(
+                            margin: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // poster email
+                                InkWell(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => Profile(userId: data['userId'] as String),
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    child: Text(
+                                      email,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
-                          ),
 
-                        // like/comment row
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(
-                                isLiked ? Icons.favorite : Icons.favorite_border,
-                                color: isLiked ? Colors.red : Colors.grey,
-                              ),
-                              onPressed: () async {
-                                final ref = postsRef.doc(doc.id);
-                                if (isLiked) {
-                                  await ref.update({
-                                    'likes': FieldValue.arrayRemove([current.uid])
-                                  });
-                                } else {
-                                  await ref.update({
-                                    'likes': FieldValue.arrayUnion([current.uid])
-                                  });
-                                }
-                              },
-                            ),
-                            Text('${likes.length} likes'),
-                            IconButton(
-                              icon: const Icon(Icons.comment),
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PostComments(postId: doc.id),
+                                // centered image at 80% width
+                                if (img != null)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 0),
+                                    child: Center(
+                                      child: SizedBox(
+                                        height: MediaQuery.of(context).size.height * 0.35,
+                                        width: MediaQuery.of(context).size.width * 0.93,
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            img,
+                                            fit: BoxFit.contain,
+                                            loadingBuilder: (ctx, child, progress) {
+                                              if (progress == null) return child;
+                                              return const Center(child: CircularProgressIndicator());
+                                            },
+                                            errorBuilder: (_, __, ___) => Container(
+                                              color: Colors.grey[200],
+                                              child: const Center(child: Icon(Icons.broken_image)),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                // like/comment row
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        isLiked ? Icons.favorite : Icons.favorite_border,
+                                        color: isLiked ? Colors.red : Colors.grey,
+                                      ),
+                                      onPressed: () => postsRef.doc(doc.id).update({
+                                        'likes': isLiked
+                                            ? FieldValue.arrayRemove([current.uid])
+                                            : FieldValue.arrayUnion([current.uid])
+                                      }),
+                                    ),
+                                    Text('${likes.length} likes'),
+                                    const SizedBox(width: 16),
+                                    FutureBuilder<QuerySnapshot>(
+                                      future: postsRef.doc(doc.id).collection('comments').get(),
+                                      builder: (ctx, snapCount) {
+                                        final count = snapCount.hasData ? snapCount.data!.docs.length : 0;
+                                        return InkWell(
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => PostComments(postId: doc.id),
+                                            ),
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.comment, size: 24),
+                                                const SizedBox(width: 4),
+                                                Text('$count'),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
 
-                        // caption
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          child: Text('$email: $cap', style: const TextStyle(fontSize: 16)),
-                        ),
+                                // caption
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                  child: Text('$email: $cap', style: const TextStyle(fontSize: 16)),
+                                ),
 
-                        // date
-                        if (dateText.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                            child: Text(
-                              dateText,
-                              style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                // date
+                                if (dateText.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                    child: Text(
+                                      dateText,
+                                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        );
-      },
+                          );
+                        },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
+
 
 
 
@@ -325,7 +365,6 @@ class _HomeState extends State<Home> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // — HEADER —
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Row(
@@ -341,7 +380,6 @@ class _HomeState extends State<Home> {
                       ),
                     ),
                   ),
-                  // Upload button or spinner
                   _isUploading
                       ? const SizedBox(
                     width: 24,
@@ -371,7 +409,7 @@ class _HomeState extends State<Home> {
 
             const SizedBox(height: 12),
 
-// — IMAGE PREVIEW / PLACEHOLDER —
+            // — IMAGE PREVIEW / PLACEHOLDER —
             if (_selectedImage != null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -381,7 +419,7 @@ class _HomeState extends State<Home> {
                     borderRadius: BorderRadius.circular(8),
                     child: Image.file(
                       _selectedImage!,
-                      fit: BoxFit.contain,  // ← show full image, scale down if too big
+                      fit: BoxFit.contain,
                       width: double.infinity,
                     ),
                   ),
@@ -406,19 +444,19 @@ class _HomeState extends State<Home> {
                   ),
                 ),
               ),
-
-
+            //const SizedBox(height: 12),
+            if (_selectedImage == null)
+              Text(
+                  textAlign: TextAlign.center,
+                  "Either choose an existing photo or take a new one"
+              )
+            else
+              Text(
+                  textAlign: TextAlign.center,
+                  "You may select a new photo or retake it if you would like"),
             const SizedBox(height: 12),
 
-            // — CAPTION FIELD —
-            TextField(
-              controller: _captionController,
-              decoration: const InputDecoration(labelText: "Caption"),
-            ),
-
-            const SizedBox(height: 20),
-
-            // — GALLERY / CAMERA BUTTONS —
+            // Getting a photo
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -437,16 +475,24 @@ class _HomeState extends State<Home> {
             ),
 
             const SizedBox(height: 20),
+
+            // CaptiOn Field
+            TextField(
+              controller: _captionController,
+              decoration: const InputDecoration(
+                labelText: 'Write a caption (optional)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+
+
+
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
-
-
-
-
-
 
   Widget _buildProfileScreen() {
     final user = FirebaseAuth.instance.currentUser;
@@ -456,7 +502,7 @@ class _HomeState extends State<Home> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // — HEADER + PROFILE PICTURE —
+          // Header and profile picture
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Column(
@@ -499,7 +545,7 @@ class _HomeState extends State<Home> {
 
                 const SizedBox(height: 12),
 
-                // Profile picture centered
+                // Profile picture
                 Center(
                   child: StreamBuilder<DocumentSnapshot>(
                     stream: instagramDb.collection('users').doc(user.uid).snapshots(),
@@ -698,22 +744,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _currentUid = FirebaseAuth.instance.currentUser!.uid;
   }
 
-  void _toggleLike(List<dynamic> likes) async {
-    if (likes.contains(_currentUid)) {
-      await _postRef.update({
-        'likes': FieldValue.arrayRemove([_currentUid]),
-      });
-    } else {
-      await _postRef.update({
-        'likes': FieldValue.arrayUnion([_currentUid]),
-      });
-    }
+  void _toggleLike(List<dynamic> likes) {
+    final liked = likes.contains(_currentUid);
+    _postRef.update({
+      'likes': liked
+          ? FieldValue.arrayRemove([_currentUid])
+          : FieldValue.arrayUnion([_currentUid]),
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenH = MediaQuery.of(context).size.height;
+    final screenW = MediaQuery.of(context).size.width;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Post Detail')),
+      appBar: AppBar(title: const Text('View Post')),
       body: StreamBuilder<DocumentSnapshot>(
         stream: _postRef.snapshots(),
         builder: (ctx, snap) {
@@ -723,35 +769,48 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           if (!snap.hasData || snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final data    = snap.data!.data()! as Map<String, dynamic>;
-          final imageUrl= data['imageUrl']   as String?;
-          final caption = (data['caption']   as String?)?.trim() ?? '';
-          final email   = (data['userEmail'] as String?) ?? 'Unknown';
-          final timestampF = data['timestamp'] as Timestamp?;
-          final dateText   = timestampF != null
-              ? DateFormat.yMMMd().add_jm().format(timestampF.toDate())
+          final data      = snap.data!.data()! as Map<String, dynamic>;
+          final imageUrl  = data['imageUrl'] as String?;
+          final caption   = (data['caption'] as String?)?.trim() ?? '';
+          final email     = (data['userEmail'] as String?) ?? 'Unknown';
+          final timestamp = data['timestamp'] as Timestamp?;
+          final dateText  = timestamp != null
+              ? DateFormat.yMMMd().add_jm().format(timestamp.toDate())
               : '';
-          final likes   = List<String>.from(data['likes'] ?? []);
-          final isLiked = likes.contains(_currentUid);
+          final likes     = List<String>.from(data['likes'] ?? []);
+          final isLiked   = likes.contains(_currentUid);
 
           return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (imageUrl != null)
-                  Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (ctx, child, prog) {
-                      if (prog == null) return child;
-                      return const SizedBox(
-                        height: 200,
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    },
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Center(
+                      child: SizedBox(
+                        height: screenH * 0.35,
+                        width: screenW * 0.93,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (ctx, child, prog) {
+                              if (prog == null) return child;
+                              return const Center(child: CircularProgressIndicator());
+                            },
+                            errorBuilder: (_, __, ___) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(child: Icon(Icons.broken_image)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
 
-                // — Likes & Comments row —
+                // likes and comments
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Row(
@@ -763,20 +822,30 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         ),
                         onPressed: () => _toggleLike(likes),
                       ),
-                      Text(
-                        '${likes.length} likes',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      Text('${likes.length} likes',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
 
                       const SizedBox(width: 16),
 
-                      IconButton(
-                        icon: const Icon(Icons.comment),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PostComments(postId: widget.post.id),
+                      FutureBuilder<QuerySnapshot>(
+                        future: _postRef.collection('comments').get(),
+                        builder: (ctx, snapCount) {
+                          final count = snapCount.hasData ? snapCount.data!.docs.length : 0;
+                          return InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => PostComments(postId: widget.post.id),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              children: [
+                                const Icon(Icons.comment),
+                                const SizedBox(width: 4),
+                                Text('$count'),
+                              ],
                             ),
                           );
                         },
@@ -785,7 +854,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   ),
                 ),
 
-                // — Caption, email, timestamp —
+                // caption
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
@@ -793,8 +862,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     style: const TextStyle(fontSize: 18),
                   ),
                 ),
-                //const SizedBox(height: 8),
 
+                // timestamp
                 if (dateText.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Padding(
@@ -805,6 +874,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ),
                   ),
                 ],
+
                 const SizedBox(height: 12),
               ],
             ),

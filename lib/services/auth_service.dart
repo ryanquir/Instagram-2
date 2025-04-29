@@ -50,7 +50,7 @@ class AuthService {
       Fluttertoast.showToast(
         msg: message,
         toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.SNACKBAR,
+        gravity: ToastGravity.TOP,
         backgroundColor: Colors.grey,
         textColor: Colors.white,
         fontSize: 16.0,
@@ -98,7 +98,7 @@ class AuthService {
       Fluttertoast.showToast(
         msg: message,
         toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.SNACKBAR,
+        gravity: ToastGravity.TOP,
         backgroundColor: Colors.grey,
         textColor: Colors.white,
         fontSize: 16.0,

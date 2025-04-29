@@ -7,7 +7,6 @@ class PostComments extends StatefulWidget {
   final String postId;
   const PostComments({required this.postId, super.key});
 
-
   @override
   State<PostComments> createState() => _PostCommentsState();
 }
@@ -21,13 +20,20 @@ class _PostCommentsState extends State<PostComments> {
   );
 
   Future<void> _postComment() async {
-    if (_commentController.text.trim().isEmpty) return;
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+    if (text.length > 60) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Comments must be 60 characters or fewer.")),
+      );
+      return;
+    }
     await instagramDb
         .collection('posts')
         .doc(widget.postId)
         .collection('comments')
         .add({
-      'text': _commentController.text.trim(),
+      'text': text,
       'userId': user.uid,
       'timestamp': FieldValue.serverTimestamp(),
     });
@@ -58,10 +64,10 @@ class _PostCommentsState extends State<PostComments> {
                       title: Text(doc['text']),
                       subtitle: FutureBuilder<DocumentSnapshot>(
                         future: instagramDb.collection('users').doc(doc['userId']).get(),
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) return const Text('Loading...');
-                          final user = snapshot.data!.data() as Map<String, dynamic>;
-                          return Text(user['email']);
+                        builder: (context, snap2) {
+                          if (!snap2.hasData) return const Text('Loading...');
+                          final userData = snap2.data!.data() as Map<String, dynamic>;
+                          return Text(userData['email']);
                         },
                       ),
                     );
@@ -77,8 +83,11 @@ class _PostCommentsState extends State<PostComments> {
                 Expanded(
                   child: TextField(
                     controller: _commentController,
+                    maxLength: 60,
                     decoration: const InputDecoration(
-                        hintText: 'Write a comment...'
+                      hintText: 'Write a comment...',
+                      counterText: '', // hides the default counter
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
